@@ -1,0 +1,9 @@
+---
+- name: 获取通道 {{ channel }} 的高度
+  shell: docker exec cli-peer{{ cli_id }}.{{ org_name }} peer channel getinfo -c {{ channel }} 2>/dev/null | awk -F'[:,]' '{ print $3}'
+  register: height
+
+- name: 如获取高度错误则退出
+  fail:
+    msg: "获取区块高度失败"
+  when: height.stdout | int < 1

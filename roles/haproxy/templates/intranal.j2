@@ -1,0 +1,272 @@
+#---------------------------------------------------------------------
+# Example configuration for CCB Blockchain
+# 内网区-外联区DMZ
+#---------------------------------------------------------------------
+ 
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local0 info
+ 
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn    65535 
+    user        haproxy
+    group       haproxy
+    daemon
+ 
+    # turn on stats unix socket
+    stats socket /var/lib/haproxy/stats
+ 
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+    mode                    tcp
+    log                     global
+    option                  tcplog
+    option                  dontlognull
+   #option http-server-close
+    option tcpka
+#    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    900s
+    timeout queue           30m
+    timeout connect         30m
+    timeout client          30m
+    timeout server          30m
+    timeout client-fin      3s
+    timeout tunnel          24h
+    timeout server-fin      3s
+    timeout tarpit          900s
+#    timeout connect         365d
+#    timeout client          365d
+#    timeout server          365d
+ 
+    timeout http-keep-alive 900s
+    timeout check           10s
+    maxconn                 65535
+#    option forwardfor
+ 
+#---------------------------------------------------------------------
+#统计界面
+#---------------------------------------------------------------------
+listen stats
+    mode http
+    bind 0.0.0.0:1080
+    stats enable
+    stats hide-version
+    stats uri     /haproxy
+    stats realm   Haproxy\ Statistics
+    stats auth    admin:admin
+    stats admin if TRUE
+ 
+#---------------------------------------------------------------------
+# api-orderer
+#---------------------------------------------------------------------
+frontend api-orderer0
+    bind *:7001
+    mode tcp
+    default_backend api-orderer0
+ 
+backend api-orderer0
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server orderer0 {{ hostvars['orderer0'].ansible_ssh_host }}:7001 check maxconn 2000
+
+frontend api-orderer1
+    bind *:7002
+    mode tcp
+    default_backend api-orderer1
+ 
+backend api-orderer1
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server orderer1 {{ hostvars['orderer1'].ansible_ssh_host }}:7002 check maxconn 2000
+
+frontend api-orderer2
+    bind *:7003
+    mode tcp
+    default_backend api-orderer2
+
+backend api-orderer2
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server orderer2 {{ hostvars['orderer2'].ansible_ssh_host }}:7003 check maxconn 2000
+#---------------------------------------------------------------------
+# api-peer
+#---------------------------------------------------------------------
+frontend api-peer0
+    bind *:7051
+    mode tcp
+    default_backend api-peer0
+ 
+backend api-peer0
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server peer0 {{ hostvars['peer0'].ansible_ssh_host }}:7051 check maxconn 2000
+
+frontend api-peer1
+    bind *:8051
+    mode tcp
+    default_backend api-peer1
+ 
+backend api-peer1
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server peer1 {{ hostvars['peer1'].ansible_ssh_host }}:7051 check maxconn 2000
+
+frontend api-peer2
+    bind *:9051
+    mode tcp
+    default_backend api-peer2
+
+backend api-peer2
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server peer2 {{ hostvars['peer2'].ansible_ssh_host }}:7051 check maxconn 2000
+#---------------------------------------------------------------------
+# event-peer
+#---------------------------------------------------------------------
+frontend event-peer0
+    bind *:7053
+    mode tcp
+    default_backend event-peer0
+ 
+backend event-peer0
+    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server peer-event0 {{ hostvars['peer0'].ansible_ssh_host }}:7053 check maxconn 2000
+
+frontend event-peer1
+    bind *:8053
+    mode tcp
+    default_backend event-peer1
+ 
+backend event-peer1
+    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server peer-event1 {{ hostvars['peer1'].ansible_ssh_host }}:7053 check maxconn 2000
+
+frontend event-peer2
+    bind *:9053
+    mode tcp
+    default_backend event-peer2
+
+backend event-peer2
+    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server peer-event2 {{ hostvars['peer2'].ansible_ssh_host }}:7053 check maxconn 2000
+#---------------------------------------------------------------------
+# hbcc                                                  
+#---------------------------------------------------------------------
+frontend hbcc_cluster
+    bind *:4040
+    mode tcp
+    default_backend hbcc_backend
+ 
+backend hbcc_backend
+    balance     roundrobin
+    default-server inter 5s fastinter 10s downinter 30s slowstart 60s rise 2 fall 3 weight 30
+    server hbcc_back1 {{ hostvars['hbcccloud1'].ansible_ssh_host }}:4040 check maxconn 2000
+    server hbcc_back2 {{ hostvars['hbcccloud2'].ansible_ssh_host }}:4040 check maxconn 2000
+    server hbcc_back3 {{ hostvars['hbcccloud3'].ansible_ssh_host }}:4040 check maxconn 2000
+#---------------------------------------------------------------------
+# java-fft                                                             
+#---------------------------------------------------------------------
+frontend java-fft_front
+    bind *:9090
+    mode tcp
+    default_backend java-fft_backend
+ 
+backend java-fft_backend
+    balance     roundrobin
+    default-server inter 5s fastinter 10s downinter 30s slowstart 60s rise 2 fall 3 weight 30
+    server java-fft1 {{ hostvars['java_ser1'].ansible_ssh_host }}:9090 check maxconn 2000
+    server java-fft2 {{ hostvars['java_ser2'].ansible_ssh_host }}:9090 check maxconn 2000
+    server java-fft3 {{ hostvars['java_ser3'].ansible_ssh_host }}:9090 check maxconn 2000
+#---------------------------------------------------------------------
+# java-xyz                                                       
+#---------------------------------------------------------------------
+frontend java-xyz_front
+    bind *:5050
+    mode tcp
+    default_backend java-xyz_backend
+ 
+backend java-xyz_backend
+    balance     roundrobin
+    default-server inter 5s fastinter 10s downinter 30s slowstart 60s rise 2 fall 3 weight 30
+    server java-xyz1 {{ hostvars['java_ser1'].ansible_ssh_host }}:5050 check maxconn 2000
+    server java-xyz2 {{ hostvars['java_ser2'].ansible_ssh_host }}:5050 check maxconn 2000
+    server java-fft3 {{ hostvars['java_ser3'].ansible_ssh_host }}:5050 check maxconn 2000
+#---------------------------------------------------------------------
+# java-plugin                                                       
+#---------------------------------------------------------------------
+frontend java-plugin_front
+    bind *:5000
+    mode tcp
+    default_backend java-plugin_backend
+ 
+backend java-plugin_backend
+    balance     roundrobin
+    default-server inter 5s fastinter 10s downinter 30s slowstart 60s rise 2 fall 3 weight 30
+    server java-xyz1 {{ hostvars['java_ser1'].ansible_ssh_host }}:5000 check maxconn 2000
+    server java-xyz2 {{ hostvars['java_ser2'].ansible_ssh_host }}:5000 check maxconn 2000
+    server java-xyz3 {{ hostvars['java_ser3'].ansible_ssh_host }}:5000 check maxconn 2000
+##---------------------------------------------------------------------
+## java-baoli                                                      
+##---------------------------------------------------------------------
+#frontend java-baoli_front
+#    bind *:6060
+#    mode tcp
+#    default_backend java-baoli_backend
+#
+#backend java-baoli_backend
+#    balance     roundrobin
+#    default-server inter 5s fastinter 10s downinter 30s slowstart 60s rise 2 fall 3 weight 30
+#    server java-baoli1 {{  hostvars['java_ser1'].ansible_ssh_host }}:6060 check maxconn 2000
+#    server java-baoli2 {{  hostvars['java_ser2'].ansible_ssh_host }}:6060 check maxconn 2000
+#    server java-baoli3 {{  hostvars['java_ser3'].ansible_ssh_host }}:6060 check maxconn 2000
+#---------------------------------------------------------------------
+# api-cluster                                                             
+#---------------------------------------------------------------------
+frontend fft-api
+    bind *:5555
+    mode tcp
+    default_backend fft-api
+ 
+backend fft-api
+    balance     roundrobin
+    option  httpchk HEAD /factor/keepaliveQuery HTTP/1.0
+    server fft-api0 {{ hostvars['api0'].ansible_ssh_host }}:5555 check inter 5000 fall 3 maxconn 2000
+    server fft-api1 {{ hostvars['api1'].ansible_ssh_host }}:5555 check inter 5000 fall 3 maxconn 2000
+    server fft-api2 {{ hostvars['api2'].ansible_ssh_host }}:5555 check inter 5000 fall 3 maxconn 2000
+
+frontend factor-api
+    bind *:9999
+    mode tcp
+    default_backend factor-api
+ 
+backend factor-api
+    balance     roundrobin
+    option  httpchk HEAD /factor/keepaliveQuery HTTP/1.0
+    server factor-api0 {{ hostvars['api0'].ansible_ssh_host }}:9999 check inter 5000 fall 3 maxconn 2000
+    server factor-api1 {{ hostvars['api1'].ansible_ssh_host }}:9999 check inter 5000 fall 3 maxconn 2000
+    server factor-api2 {{ hostvars['api2'].ansible_ssh_host }}:9999 check inter 5000 fall 3 maxconn 2000
+#---------------------------------------------------------------------
+# P8-bcs
+#---------------------------------------------------------------------
+frontend P8-bcs_front
+    bind *:8101
+    mode tcp
+    default_backend P8-bcs_backend
+
+backend P8-bcs_backend
+    balance     roundrobin
+    default-server inter 5s fastinter 10s downinter 30s slowstart 60s rise 2 fall 3 weight 30
+    server java-bcs1 11.161.161.196:8101 check maxconn 2000
+    server java-bcs2 11.161.161.197:8101 check maxconn 2000
+    server java-bcs3 11.161.161.198:8101 check  maxconn 2000

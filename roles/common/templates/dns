@@ -1,0 +1,4 @@
+#!/bin/bash
+# chkconfig:3 88 88
+
+sed -i '0,/^nameserver.*/s//nameserver {{ dns |default('114.114.114.114')  }}/' /etc/resolv.conf

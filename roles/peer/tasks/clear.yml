@@ -1,0 +1,9 @@
+---
+- name: 删除本地账本数据
+  file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+  - "{{ fabric_home }}"
+  - "{{ fabric_data }}"
+

@@ -1,0 +1,12 @@
+fork = true
+auth = true
+port = {{ mongodb_replica_port | default ('27010') }}
+dbpath = {{ mongodbpath }}
+logpath = {{ worker_home }}/mongodb/logs/mongodb.log
+pidfilepath = {{ worker_home }}/mongodb/logs/mongodb.pid
+logappend = true
+directoryperdb = true
+replSet = {{ replica_replset }}
+oplogSize=1024
+maxConns = 20000
+keyFile={{ worker_home }}/mongodb/auth/mongodb-keyfile

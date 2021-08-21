@@ -1,0 +1,38 @@
+
+- set_fact:
+    docker_image_project: "{{ HFApi['docker_image_project'] }}"
+    docker_image_name: "{{ HFApi['docker_image_name'] }}"
+    time: "{{ lookup('pipe', 'date +%Y%m%d.%H%M%S') }}"
+    instance_name: "{{ api_vars.chaincode }}"
+    app_type: "{{ HFApi['app_type'] }}"
+    config_files: "{{ HFApi['config_files'] | default('[]', true) }}"
+    instance_configs: "{{ api_vars['instance_configs'] | default('[]') }}"
+    sub_directories: "{{ HFApi['sub_directories'] | default('[]') }}"
+    version: "{{ api_vars['version'] | default(HFApi['image_latest_tag']) }}"
+    healthz: "{{ api_vars['healthz'] | default(HFApi['healthz']) }}"
+    instance_vars: "{{ api_vars }}"
+    hosts: "{{ HFApi['hosts'] |default('[]') }}"
+    cc_version: "{{ fabric_channels[channel].chaincodes | json_query('[*].version') }}"
+  tags: always
+
+- debug:
+    msg:
+    - 时间：{{ time }}
+    - 主机：{{ inventory_hostname }}
+    - 通道：{{ channel }}
+    - 合约：{{ fabric_channels[channel].chaincodes | items2dict(key_name='name', value_name='version') | to_yaml }}
+    - 应用：{{ HFApi['description'] }}
+    - 版本：{{ version }}
+    - 目录：{{ work_dir }}
+  tags: always
+
+- pause:
+    seconds: 5
+
+- import_role:
+    name: fabric_cli
+    tasks_from: fetch_channel_height
+  tags: config
+
+- import_role:
+    name: app_deploy

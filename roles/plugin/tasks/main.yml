@@ -1,0 +1,58 @@
+---
+
+- name: 载入变量
+  include_vars: "../../../vars/{{ item }}.yml"
+  with_items:
+    - var
+    - dns
+    - hosts
+
+- name: 创建 api-gw-plugin 工作目录
+  file:
+    path: "{{ worker_home }}/plugin"
+    state: directory
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 安装 api-gw-plugin java
+  unarchive:
+    src: api-gw-plugin-1.0.0.tar.gz
+    dest: "{{ worker_home }}/plugin"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 确保 api-gw-plugin 原配置文件干净
+  file:
+    path: "{{ plugin_dir }}/{ item }}"
+    state: absent
+  with_items:
+    - config/application_custom.properties
+    - config/logback-spring.xml
+    - bin/plugin.sh
+
+- name: 上传 api-gw-plugin 的配置文件和启动脚本
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ plugin_dir }}/{{ item.dest }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - { src: application_custom.properties, dest: config/application_custom.properties }
+    - { src: logback-spring.xml, dest: config/logback-spring.xml }
+    - { src: plugins.sh, dest: bin/plugins.sh }
+
+- name: 上传zh_1证书
+  copy:
+    src: zh_1.key
+    dest: "{{ plugin_dir }}/config"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+    mode: 0600
+
+- name: 确保工作目录属主
+  file:
+    path: "{{ plugin_dir }}"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+    recurse: yes
+    state: directory

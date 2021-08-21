@@ -1,0 +1,8 @@
+- debug: 
+    msg: "ready to deploy {{fabric_deploy_ver}} version"
+
+- include_tasks: membership_ge1.4.yml
+  when: fabric_deploy_ver|string != "1.0" and fabric_deploy_ver|string != "1.1"
+
+- include_tasks: membership_lt1.4.yml
+  when: fabric_deploy_ver|string == "1.0" or fabric_deploy_ver|string == "1.1"

@@ -1,0 +1,38 @@
+---
+# Connection
+ansible_ssh_user: root
+ansible_ssh_private_key_file: "{{ playbook_dir }}/0_inventory/inventory-Hoke/sshkey/id_rsa"
+ansible_ssh_pass: "Welc@me1"
+
+# System
+worker_group: blockchain
+worker_gid: 1500
+worker_user: blockchain
+worker_uid: 1500
+worker_home: "/home/{{ worker_user }}"
+
+# Fabric Orderer & Genesis
+fabric_orderer_type: etcdraft
+fabric_genesis_orgs:
+  ords:
+  - ord1
+  orgs:
+  - org1
+
+# Fabric channels and chaincodes
+fabric_channels:
+  channelfft:
+    orgs:
+    - org1
+    - org12
+    - org11
+    chaincodes:
+    - name: fft
+      version: 3.0.0
+    api:
+      listen_port: 5555
+      domain: apiserver.{{ org_domain }}
+      channel: channelfft
+      chaincode: fft
+      rabbitmq_exchange: channelfft
+      rabbitmq_group: rabbitmq

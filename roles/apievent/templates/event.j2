@@ -1,0 +1,30 @@
+version: '2'
+
+services:
+  eventserver:
+    container_name: eventserver_{{ ccname | default ('fft') }}
+    image: {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/eventserver:latest
+    restart: always
+    volumes:
+    - ./client_sdk.yaml:/opt/eventserver/client_sdk.yaml
+    #- ./crypto:/opt/eventserver/crypto
+    - ./current.info:/opt/eventserver/current.info
+    - {{ fabric_home }}/crypto-config:/opt/eventserver/crypto-config
+    - /etc/localtime:/etc/localtime 
+    working_dir: /opt/eventserver
+    logging:
+      driver: "json-file"
+      options: 
+        max-size: "50m"
+        max-file: "10"
+    command: ./eventserver
+    extra_hosts:
+{% for mq_hosts in groups[rabbitmq_gname] %}
+      {{ mq_hosts }}: {{ hostvars[mq_hosts].ansible_ssh_host }}
+{% endfor %}
+{% for peer_hosts in groups[peer_gname] %}
+      {{ peer_hosts }}.{{ fabric_domain }}: {{ hostvars[peer_hosts].ansible_ssh_host }}
+{% endfor %}
+{% for orderer_hosts in groups[orderer_gname] %}
+      {{ orderer_hosts }}.{{ fabric_domain }}: {{ hostvars[orderer_hosts].ansible_ssh_host }}
+{% endfor %}

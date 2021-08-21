@@ -1,0 +1,33 @@
+version: '2'
+services:
+  mongodb1:
+    container_name: {{ inventory_hostname }}
+    image: runchain/mongodb
+    restart: always
+    environment:
+      - MONGO_PORT=27010
+      - MONGO_OPSIZE=2048
+      - MONGO_MAXCONN=20000
+  {%if  %}
+      - MONGO_REPLSTAT=true
+      - MONGO_REPLNAME=replcluster
+      - MONGO_REPLNODE1=mongodb1.runchain.tech:27010
+      - MONGO_REPLNODE2=mongodb2.runchain.tech:27010
+      - MONGO_REPLNODE3=mongodb3.runchain.tech:27010
+  {%endif%}
+      - MONGO_ADMIN=root
+      - MONGO_ADMINPASS=root123
+    working_dir: /opt/mongodb
+    volumes:
+    - ./mongodb_data:/opt/mongodb/data
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+    - 27010:27010
+    extra_hosts:
+      mongodb1.runchain.tech: {{ hostvars['mongodb1'].ansible_ssh_host }}
+      mongodb2.runchain.tech: {{ hostvars['mongodb2'].ansible_ssh_host }}
+      mongodb3.runchain.tech: {{ hostvars['mongodb3'].ansible_ssh_host }}

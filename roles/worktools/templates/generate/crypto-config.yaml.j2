@@ -1,0 +1,23 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+# ---------------------------------------------------------------------------
+# "OrdererOrgs" - Definition of organizations managing orderer nodes
+# ---------------------------------------------------------------------------
+#
+{% if ordorg is sameas true %}
+OrdererOrgs:
+  - Name: ord{{ org_id }}
+    Domain: ord{{ org_id }}.{{ fabric_domain }}
+    Template:
+      Count: {{ ownorderer | length }}
+{% endif %}
+PeerOrgs:
+  - Name: Org{{ org_id }}
+    Domain: org{{ org_id }}.{{ fabric_domain }}
+    Template:
+      Count: {{ ownpeer | length }}
+    Users:
+      Count: 1

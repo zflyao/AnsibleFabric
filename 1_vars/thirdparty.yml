@@ -1,0 +1,69 @@
+---
+# 法大大
+fdd:
+  default:
+    appId: '402950'
+    appSecret: fvhILjEJpPlu9eKcwlffPrRX
+    url: http://test.api.fabigbig.com:8888/api/
+  prod:
+    appId: '000253'
+    appSecret: chmS7iyigCzTRUzupla48YWv
+    url: https://extapi.fadada.com/api2/
+
+# 百川
+baichuan_ftp:
+  default:
+    server: 119.2.12.149
+    port: 8338
+    username: ccb-baibank-iiU0s
+    password: os@12isa3*qTrH
+
+# 道合
+daohe:
+  default:
+    wsdl_url: 58.56.152.118:8090
+
+# 数融链发票验真
+shuronglianCheckInvoice:
+  test:
+    url: https://openapi.wetax.com.cn/tool/invoice-check
+  prod:
+    url: http://openapi.wetax.com.cn/tool/invoice-check
+
+# 数融链OCR
+shuronglianOcr:
+  test:
+    url: http://10.255.0.174:8280/ocr/conpanyBussinessOcr
+  prod:
+    url: http://10.20.10.194:8280/ocr/conpanyBussinessOcr
+
+# 数融链短信
+shuronglianSm:
+  test:
+    url: http://10.255.0.174:7281/sms/sendMessage
+  prod:
+    url: http://10.20.10.194:7281/sms/sendMessage
+
+# 数融链CFCA
+shuronglianCfca:
+  test:
+    url: https://210.74.42.15:443/UAServer/Authenticate
+    trust_store_password: cfca1234
+    key_store_password: cfca1234
+    trustserverjks: trust.jks
+    keyserverjks: yytest.jks
+    pdf_server_url: http://210.74.42.17
+  prod:
+    url: https://cfyz.yonyou.com:443/UAServer/Authenticate
+    trust_store_password: cfca1234
+    key_store_password: cfca1234
+    trustserverjks: trust.jks
+    keyserverjks: yytest.jks
+    pdf_server_url: http://210.74.41.195
+
+shuronglianCfcaSadk:
+  test:
+    url: http://10.255.0.165:8080/Seal
+  prod:
+    url: http://10.21.102.179:8080/Seal
+

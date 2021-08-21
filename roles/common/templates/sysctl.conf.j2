@@ -1,0 +1,4 @@
+{% for i in sysctl %}
+#{{ i.description | default(None) }}
+{{ i.name }} = {{ i.value }}
+{% endfor %}

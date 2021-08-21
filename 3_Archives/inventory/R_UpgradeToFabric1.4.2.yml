@@ -1,0 +1,229 @@
+- name: Upgrading peers and orderers
+  hosts: "*_peer:*_orderer"
+#  hosts: org1_orderer:org1_peer:org11_orderer:org11_peer:org12_orderer:org12_peer:org20_peer
+  gather_facts: false
+  vars:
+    node_type: "{{ inventory_hostname | regex_search('(peer|orderer)') }}"
+    working_dir: /home/blockchain/{{ inventory_hostname }}/conf{% endif %}
+    fabric_data: /data/{{ inventory_hostname }}
+    image_tag: amd64-1.4.2
+  tags:
+  - binary
+  tasks:
+  - include_vars:
+      dir: files/fabric_upgrade_v1.4.0/vars
+  - name: Stop all peers and orderers
+    command: docker-compose down
+    args:
+      chdir: "{{ working_dir }}"
+    ignore_errors: true
+  - name: Modify docker-compose.yml for orderer and peers~image
+    replace:
+      path: "{{ working_dir }}/docker-compose.yml"
+      regexp: '^(\s+)image:.*'
+      replace: '\1image: {{ harbor_domain }}/hyperledger/fabric-{{ node_type }}:{{ image_tag }}'
+  - name: Modify docker-compose.yml for orderers~environment
+    command: |
+      sed -ri {{ working_dir }}/docker-compose.yml \
+      -e 's!ORDERER_KAFKA_TLS_(PRIVATEKEY|CERTIFICATE|ROOTCAS)=!ORDERER_KAFKA_TLS_\1_FILE=!' \
+      -e 's!\[(/var/hyperledger/orderer/kafka/tls/ca.crt)\]!\1!'
+    when: node_type == "orderer"
+  - name: Modify docker-compose.yml for peers~environment
+    lineinfile:
+      path: "{{ working_dir }}/docker-compose.yml"
+      state: present
+      regexp: '^(\s+\- ){{ envname }}'
+      insertafter: '^    environment:'
+      line: '      - {{ envname }}={{ harbor_domain }}/fabric1.4/fabric-ccenv:latest'
+      validate: docker-compose -f %s config
+    loop:
+    - CORE_CHAINCODE_BUILDER
+    - CORE_CHAINCODE_GOLANG_RUNTIME
+    - CORE_CHAINCODE_NODE_RUNTIME
+    loop_control:
+      loop_var: envname
+    when: node_type == "peer"
+
+  - name: Start all peers and orderers
+    command: docker-compose up -d
+    args:
+      chdir: "{{ working_dir }}"
+
+- name: Templating V1_4_2 Capabilities artifacts
+  hosts: orderer0.ord1
+  vars:
+    working_dir: /home/blockchain/cli-{{ inventory_hostname }}
+    fabric_version: 1.4.2
+  tags:
+  - templating
+  tasks:
+  - include_vars:
+      dir: files/fabric_upgrade_v1.4.0/vars
+  - name: Create {{ working_dir }}/artifacts/ if not exists
+    file:
+      path: "{{ working_dir }}/artifacts"
+      state: directory
+  - name: Templating capabilities.json
+    template:
+      src: files/fabric_upgrade_v1.4.0/templates/capabilities.json.j2
+      dest: "{{ working_dir }}/artifacts/capabilities.json"
+  - name: Templating fabric-config-update.sh
+    template:
+      src: files/fabric_upgrade_v1.4.0/templates/fabric-config-update.sh.j2
+      dest: "{{ working_dir }}/fabric-config-update.sh"
+      mode: 0755
+
+- name: Update system channel's capabilities
+  hosts: orderer0.ord1
+  gather_facts: false
+  vars:
+    working_dir: /home/blockchain/cli-{{ inventory_hostname }}
+  tags:
+  - cap
+  - sysconfig
+  tasks:
+  - include_vars:
+      dir: files/fabric_upgrade_v1.4.0/vars
+  - name: Create and update system channel's capabilities on group orderer and channel
+    command:
+      argv:
+      - ./fabric-config-update.sh
+      - testchainid
+      - "{{ group_action[1] }}"
+      - "{{ group_action[0] }}"
+    args:
+      chdir: "{{ working_dir }}"
+    loop: "{{ ['orderer','channel'] | product(['create','update']) | list }}"
+    loop_control:
+      loop_var: group_action
+
+- name: Update or sign app channel's capabilities
+  hosts: orderer0.ord1
+  gather_facts: false
+  vars:
+    working_dir: /home/blockchain/cli-{{ inventory_hostname }}
+  tags:
+  - cap
+  - appconfig
+  tasks:
+  - include_vars:
+      dir: "{{ item }}"
+    loop:
+    - files/fabric_upgrade_v1.4.0/vars
+    - vars
+
+  - name: Create and update application channels' capabilities on group orderer
+    command:
+      argv:
+      - ./fabric-config-update.sh
+      - "{{ channel_cmd[0] }}"
+      - "{{ channel_cmd[1] }}"
+      - orderer
+    args:
+      chdir: "{{ working_dir }}"
+    loop: "{{ ['channel'] | product(channel_add.keys()) | map('join') | product(['create', 'update']) | list }}"
+    loop_control:
+      loop_var: channel_cmd
+  - name: Create and update application channels' capabilities on group channel
+    command:
+      argv:
+      - ./fabric-config-update.sh
+      - "{{ channel_cmd[0] }}"
+      - "{{ channel_cmd[1] }}"
+      - channel
+    args:
+      chdir: "{{ working_dir }}"
+    loop: "{{ ['channel'] | product(channel_add.keys()) | map('join') | product(['create', 'sign']) | list }}"
+    loop_control:
+      loop_var: channel_cmd
+  - name: Fetch all signed configtx files of all channels to peer0.org1
+    fetch:
+      src: "{{ working_dir }}/artifacts/{{ channel }}_config_update_in_envelope.pb"
+#      dest: files/fabric_upgrade_v1.4.0/files/
+      dest: /home/blockchain/cli-peer0.org1/artifacts/
+    delegate_to: peer0.org1
+    loop: "{{ ['channel'] | product(channel_add.keys()) | map('join') | list }}"
+    loop_control:
+      loop_var: channel
+
+- name: Update all channels' capabilities on group channel on peer0.org1
+  hosts: peer0.org1
+  gather_facts: false
+  vars:
+    working_dir: /home/blockchain/cli-{{ inventory_hostname }}
+  tags:
+  - cap
+  - appconfig
+  tasks:
+  - include_vars:
+      dir: "{{ item }}"
+    loop:
+    - files/fabric_upgrade_v1.4.0/vars
+    - vars
+#  - name: Transfer all signed configtx files to {{ inventory_hostname }}
+#    copy:
+#      src: files/fabric_upgrade_v1.4.0/files/orderer0.ord1/home/blockchain/cli-orderer0.ord1/artifacts/
+#      dest: "{{ working_dir }}/artifacts"
+  - name: Update configs for all channels
+    shell: docker exec cli-{{ inventory_hostname }} sh -c 'peer channel update -f artifacts/{{ channel }}_config_update_in_envelope.pb -c {{ channel }} -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA'
+    loop: "{{ ['channel'] | product(channel_add.keys()) | map('join') | list }}"
+    loop_control:
+      loop_var: channel
+
+- name: Create and sign capabilities artifacts on group application
+  hosts: orderer0.ord1
+  gather_facts: false
+  vars:
+    working_dir: /home/blockchain/cli-{{ inventory_hostname }}
+  tags:
+  - cap
+  - appconfigapp
+  tasks:
+  - include_vars:
+      dir: "{{ item }}"
+    loop:
+    - files/fabric_upgrade_v1.4.0/vars
+    - vars
+  - name: Create and sign application channels' capabilities on group application
+    command:
+      argv:
+      - ./fabric-config-update.sh
+      - "{{ channel_cmd[0] }}"
+      - "{{ channel_cmd[1] }}"
+      - application
+    args:
+      chdir: "{{ working_dir }}"
+    loop: "{{ ['channel'] | product(channel_add.keys()) | map('join') | product(['create', 'sign']) | list }}"
+    loop_control:
+      loop_var: channel_cmd
+  - name: Fetch all signed configtx files of all channels
+    fetch:
+      src: "{{ working_dir }}/artifacts/{{ channel }}_config_update_in_envelope.pb"
+      dest: files/fabric_upgrade_v1.4.0/files/
+    loop: "{{ ['channel'] | product(channel_add.keys()) | map('join') | list }}"
+    loop_control:
+      loop_var: channel
+
+- name: Update all channels's capabilities on group application on peer0.org1
+  hosts: peer0.org1
+  gather_facts: false
+  vars:
+    working_dir: /home/blockchain/cli-{{ inventory_hostname }}
+  tags:
+  - cap
+  - appconfigapp
+  tasks:
+  - include_vars:
+      dir: "{{ item }}"
+    loop:
+    - files/fabric_upgrade_v1.4.0/vars
+    - vars
+  - name: Transfer all signed configtx files to {{ inventory_hostname }}
+    copy:
+      src: files/fabric_upgrade_v1.4.0/files/orderer0.ord1/home/blockchain/cli-orderer0.ord1/artifacts/
+      dest: "{{ working_dir }}/artifacts"
+  - name: Update configs for all channels
+    shell: docker exec cli-{{ inventory_hostname }} sh -c 'peer channel update -f artifacts/{{ channel }}_config_update_in_envelope.pb -c {{ channel }} -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA'
+    loop: "{{ ['channel'] | product(channel_add.keys()) | map('join') | list }}"
+    loop_control:
+      loop_var: channel

@@ -1,0 +1,25 @@
+---
+
+harbor: true
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+fabric_home: "{{ worker_home }}/{{ inventory_hostname }}"
+fabric_domain: finblockchain.cn
+ccname_home: "{{ fabric_home }}/{{ ccname | default ('fft') }}"
+
+org_id: "{{ inventory_hostname | regex_search('\\d+$') }}"
+ord_id: "{{ org_id }}"
+peer_gname: "org{{ org_id }}_peer"
+orderer_gname: "org{{ ord_id }}_orderer"
+rabbitmq_gname: "org{{ org_id }}_rabbitmq"
+api_id: "{{ inventory_hostname | regex_search('\\d+') }}"
+api_port: "{{ channel_add[ccname|default('fft')].port }}"
+playbook: "{{ channel_add[ccname|default('fft')].playbook }}"
+ccver: "{{ channel_add[ccname|default('fft')].ccver }}"
+harbor_project: "{{ channel_add[ccname|default('fft')].harbor_project }}"
+
+queue_name: "{{ ccname }}Queue_msp{{ org_id }}"
+system_queue_name: "sys_{{ queue_name }}"
+
+env_src: "{{inventory_file | basename}}"

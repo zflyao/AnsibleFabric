@@ -1,0 +1,26 @@
+---
+- name: STAGE - STOP
+  include_tasks: stop_{{ app_type }}.yml
+  tags:
+  - stop
+
+- name: STAGE - CLEAR/BACKUP
+  import_tasks: clear.yml
+  tags:
+  - clear
+  - deploy
+
+- name: STAGE - DEPLOY
+  import_tasks: deploy.yml
+  tags:
+  - deploy
+
+- name: STAGE - CONFIG
+  import_tasks: config.yml
+  tags:
+  - config
+
+- name: STAGE - START
+  include_tasks: start_{{ app_type }}.yml
+  tags:
+  - start

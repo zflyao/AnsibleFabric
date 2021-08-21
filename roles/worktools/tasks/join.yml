@@ -1,0 +1,134 @@
+---
+
+- name: 创建 tools 目录
+  file:
+    path: "{{ fabric_home }}/tools"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 检查工具
+  stat:
+    path: "{{ fabric_home }}/tools/cryptotool/linux-amd64/bin/peer"
+  register: peer_stat
+
+- name: copy cryptotool
+  copy:
+    src: cryptotool
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: not peer_stat.stat.exists
+
+- name: "copy V{{fabric_deploy_ver}} bin"
+  copy:
+    src: "bin_v{{fabric_deploy_ver}}/"
+    dest: "{{ fabric_home }}/tools/cryptotool/linux-amd64/bin/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+  when: not peer_stat.stat.exists    
+
+- name: 生成{{ fabric_deploy_ver }}版configtx.yaml配置文件
+  template:
+    src: "generate/configtx_v{{ fabric_deploy_ver }}.yaml.j2"
+    dest: "{{ fabric_home }}/tools/{{item}}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0600
+  with_items:
+    - cryptotool/sampleconfig/configtx.yaml
+    - configtx.yaml
+
+- name: 判断证书是否已存在
+  stat:
+    path: "{{ fabric_home }}/tools/crypto-config"
+  register: file_exist
+
+- name: copy crypto-config
+  copy:
+    src: "{{ playbook_dir }}/{{ env_src }}/crypto-config"
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: not file_exist.stat.exists
+
+- name: copy channel-artifacts
+  copy:
+    src: "{{ playbook_dir }}/{{ env_src }}/{{ item }}"
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+  with_items:
+    - "channel{{ ccname }}.block"
+    - channel-artifacts
+  tags: test
+
+- name: copy chaincode package
+  copy:
+    src: "chaincode/{{ccname }}.out"
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: "上传 worktools_join_org{{ org_id }}.sh"
+  template:
+    src: worktools_join.j2
+    dest: "{{ fabric_home }}/tools/worktools_join_org{{ org_id }}.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+
+- name: 检查hosts中是否有orderer
+  shell: cat /etc/hosts | grep orderer
+  register: check_hosts
+  ignore_errors: yes
+
+- debug:
+    msg: "hosts 未绑定 orderer"
+  when: check_hosts.rc != 0
+
+- name: hosts 绑定 orderer
+  lineinfile: 
+    path: /etc/hosts
+    line: "{{ hostvars[item].ansible_ssh_host }} {{ hostvars[item].inventory_hostname }}.{{ fabric_domain }}"
+  loop: "{{ ownorderer }}"
+  when: check_hosts.rc != 0
+
+- name: 检查hosts中是否有peer
+  shell: cat /etc/hosts | grep {{inventory_hostname}}
+  register: check_hosts_peer
+  ignore_errors: yes
+
+- debug:
+    msg: "hosts 未绑定 peer"
+  when: check_hosts_peer.rc != 0
+
+- name: hosts 绑定 peer
+  lineinfile: 
+    path: /etc/hosts
+    line: "{{ hostvars[item].ansible_ssh_host }} {{ hostvars[item].inventory_hostname }}.{{ fabric_domain }}"
+  loop: "{{ ownpeer }}"
+  when: check_hosts_peer.rc != 0
+
+- name: find number of peer in crypto
+  find:
+    paths: "{{ fabric_home }}/tools/crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/peers"
+    file_type: directory
+  register: find_crypto
+  when: ccname != "njcb-elc" or ccname != "njcb-asset"
+
+- pause:
+    seconds: 5
+
+- debug:
+    msg: "The number of peer is {{ find_crypto.matched }}"
+
+- import_tasks: join_general.yml
+  when: ccname is not defined or ccname != "njcb-elc" and ccname != "njcb-asset"
+
+- import_tasks: join_njcb-elc.yml
+  when: ccname is defined and ccname == "njcb-elc" or ccname == "njcb-asset"

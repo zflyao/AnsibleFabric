@@ -1,0 +1,149 @@
+---
+
+- name: 设置变量 peer_domain
+  set_fact:
+    peer_domain: "org{{ org_id }}.{{ fabric_domain }}"
+  when: peer_domain is undefined
+
+- name: 若 ordorg 为 false，则设置变量 ord_id 为 1
+  set_fact:
+    ord_id: 1
+  when: not own_orderer
+  
+- set_fact:
+    orderer_domain: "ord{{ ord_id }}.{{ fabric_domain }}"
+  when: orderer_domain is undefined
+
+- name: 创建工作目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - "{{ ccname_home }}/config"
+    - "{{ ccname_home }}/curl_scripts"
+    - "{{ ccname_home }}/logs"
+    - "{{ worker_home }}/images"
+    - "{{ worker_home }}/crypto-config/ordererOrganizations"
+    - "{{ worker_home }}/crypto-config/peerOrganizations"
+
+- name: touch current.info
+  copy:
+    dest: "{{ ccname_home }}/current.info"
+    content: "{{ blockinfo | default('0') }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 上传镜像
+  copy:
+    src: "../../../summary_files/docker-images/{{ fabric_deploy_ver | default('1.4.0') }}/runchainapi.tar"
+    dest: "{{ worker_home }}/images/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: not harbor
+
+- name: docker login
+  command: docker login {{ harbor_domain | default ('hub.finrunchain.com') }} -u {{ harbor_user | default('ansible')}} -p {{ harbor_passwd | default('Ansible123') }}
+  when: harbor
+
+- name: pull 镜像
+  # become: yes
+  # become_user: "{{ worker_user }}"
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/fabric1.4/runchainapi:{{tag}}
+  when: harbor
+
+- name: 判断证书是否已存在
+  stat:
+    path: "{{ worker_home }}/crypto-config/peerOrganizations/{{ peer_domain }}/ca"
+  register: file_exist
+
+- name: 上传 fabric 证书
+  copy:
+    src: "{{ playbook_dir }}/{{ env_src }}/crypto-config/{{ item.src }}"
+    dest: "{{ worker_home }}/crypto-config/{{ item.dest }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - { src: 'ordererOrganizations/{{ orderer_domain }}' , dest: 'ordererOrganizations' }
+    - { src: 'peerOrganizations/{{ peer_domain }}' , dest: 'peerOrganizations' }
+  when: not file_exist.stat.exists
+
+- name: 上传docker-compose.yml
+  template:
+    src: docker-compose.j2
+    dest: "{{ ccname_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: copy config files and scripts
+  template:
+    src: "{{ item }}"
+    dest: "{{ ccname_home }}/{{ item }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+  tags: test
+  with_items:
+    - config/application-localmsp.yml
+    - config/application.yml
+    - config/logback-spring.xml
+    - curl_scripts/data.txt
+
+- name: 底层探活验证脚本
+  template:
+    src: "curl_scripts/{{ item }}"
+    dest: "{{ ccname_home }}/curl_scripts/{{ item }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+  with_items:
+    - live.sh
+    - query.sh
+    - savedata.sh
+
+- name: 启动 docker 容器
+  become: yes                
+  become_user: "{{ worker_user }}"
+  command: /usr/local/bin/docker-compose -f {{ ccname_home }}/docker-compose.yml up -d
+
+- name: 等待5秒
+  wait_for:
+    timeout: 5
+  
+- name: 检查容器启动是否正常
+  shell: docker ps -a -f name=runchainapi_{{ ccname }}
+  register: runchainapi_status
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ runchainapi_status.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 等待 API port 监听
+  wait_for:
+    port: "{{ api_port }}"
+    delay: 10
+
+- name: ledger1.0 底层探活
+  shell: curl -I http://127.0.0.1:{{ api_port }}/factor/keepaliveQuery
+  when: chaincodeledgerversion == "1.0.3"
+  ignore_errors: yes
+  register: query_status
+
+- debug:
+    msg: "{{ query_status.stdout_lines }}"
+  when: chaincodeledgerversion == "1.0.3"
+  ignore_errors: yes
+
+- name: ledger3.0 底层探活
+  shell: curl http://127.0.0.1:{{ api_port }}/assetTradingPlatform/assetQuery/QueryAllOrgInfos
+  when: chaincodeledgerversion != "1.0.3"
+  register: query_status
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ query_status.stdout_lines }}"
+  when: chaincodeledgerversion != "1.0.3" 
+  ignore_errors: yes

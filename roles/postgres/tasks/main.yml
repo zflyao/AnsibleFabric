@@ -1,0 +1,196 @@
+---
+- name: 载入变量
+  include_vars: "../../../vars/{{ item }}.yml"
+  with_items:
+    - var
+  #  - dns
+  #  - hosts
+
+- name: hosts 绑定域名
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item].ansible_ssh_host }} {{ item }}.{{ fabric_domain }}"
+  loop: "{{ groups['org' + org_id + '_pg'] }}"
+  tags:
+  - hosts
+
+- name: 解压pg安装包
+  unarchive:
+    src: postgresql.tar.gz
+    dest: "{{ worker_home }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 创建目录
+  file:
+    path: "{{ pg_data }}"
+    state: directory
+    mode: 0700
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+
+- name: 设置环境变量
+  lineinfile: 
+    path: "{{ worker_home }}/.bash_profile"
+    line: "{{ item }}"
+  with_items:
+    - "export PGPORT={{ db_port }}"
+    - "export PGHOME={{ pg_dir }}"
+    - "export PGDATA=$PGHOME/data"
+    - "export PATH=.:$PGHOME/bin:$PATH"
+    - "export LD_LIBRARY_PATH=$PGHOME/lib"
+    
+- name: 使环境变量生效
+  shell: source {{ worker_home }}/.bash_profile
+  
+- name: 初始化数据库db0
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: "{{ pg_dir }}/bin/initdb -D {{ pg_data }}"
+  when: "'db0' in inventory_hostname"
+
+- name: postgresql conf
+  copy:
+    src: postgresql.conf
+    dest: "{{ pg_data }}/postgresql.conf"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  when: "'db0' in inventory_hostname"
+    
+- name: pg_hba conf
+  template:
+    src: pg_hba.conf.j2
+    dest: "{{ pg_data }}/pg_hba.conf"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  when: "'db0' in inventory_hostname"
+
+- name: 启动db0
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: "source {{ worker_home }}/.bash_profile; {{ pg_dir }}/bin/pg_ctl -D {{ pg_data }}  start"
+  when: "'db0' in inventory_hostname"
+  
+- name: 创建复制用户
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: source {{ worker_home }}/.bash_profile;echo "CREATE ROLE {{ pg_cpuser }} REPLICATION LOGIN PASSWORD '{{ pg_cppw }}';" | {{ pg_dir }}/bin/psql -U {{ worker_user }} -d postgres
+  when: "'db0' in inventory_hostname"
+
+- name: 设置管理员密码
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: source {{ worker_home }}/.bash_profile;echo "ALTER USER {{ worker_user }} WITH PASSWORD '{{ pg_pw }}';" | {{ pg_dir }}/bin/psql -U {{ worker_user }} -d postgres
+  when: "'db0' in inventory_hostname"
+  
+- name: postgresqlstream conf
+  copy:
+    src: postgresqlstream.conf
+    dest: "{{ pg_data }}/postgresql.conf"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  when: "'db0' in inventory_hostname"
+  
+- name: 重启db0
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: "source {{ worker_home }}/.bash_profile; {{ pg_dir }}/bin/pg_ctl -D {{ pg_data }} restart"
+  when: "'db0' in inventory_hostname"
+  
+- name: db1 db2 复制
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: "source {{ worker_home }}/.bash_profile; {{ pg_dir }}/bin/pg_basebackup -D {{ pg_data }} -Fp -Xs -v -P -h db0.{{ domain }} -U {{ pg_cpuser }} -w"
+  when: "'db0' not in inventory_hostname"
+  
+- name: 修改配置
+  command: "sed -i 's/#hot_standby = on/hot_standby = on/g' {{ pg_data }}/postgresql.conf"
+  when: "'db0' not in inventory_hostname"
+  
+- name: recovery done
+  template:
+    src: recovery.done.j2
+    dest: "{{ pg_data }}/recovery.done"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  when: "'db0' in inventory_hostname"
+  
+- name: recovery conf
+  template:
+    src: recovery.conf.j2
+    dest: "{{ pg_data }}/recovery.conf"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  when: "'db0' not in inventory_hostname"
+  
+- name: 更改属主
+  file:
+    path: "{{ pg_data }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+    recurse: yes
+    
+- name: 启动db1 db02
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: "source {{ worker_home }}/.bash_profile; {{ pg_dir }}/bin/pg_ctl -D {{ pg_data }} start"
+  when: "'db0' not in inventory_hostname"
+  
+
+- name: 创建用户
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: source {{ worker_home }}/.bash_profile;echo "create user {{ db_user }} password '{{ db_pass }}';" | {{ pg_dir }}/bin/psql -U {{ worker_user }} -d postgres
+  when: "'db0' in inventory_hostname"
+
+##- name: 创建数据库
+##  become: yes
+##  become_user: "{{ worker_user }}"
+##  shell: "{{ pg_dir }}/bin/createdb -E UTF8 -O {{ db_user }} {{ db_name }};"
+##  when: inventory_hostname == "db0"
+##
+##- name: 回收普通用户对elc权限
+##  become: yes
+##  become_user: "{{ worker_user }}"
+##  shell: "{{ pg_dir }}/bin/psql -U blockchain -d {{ db_name }} -c 'revoke create on schema public from public;'"
+##  when: inventory_hostname == "db0"
+##
+##- name: 上传sql文件
+##  copy:
+##    src: "{{ db_sql_struct }}"
+##    dest: "{{ pg_dir }}/{{ db_sql_struct }}"
+##    group: "{{ worker_user }}"
+##    owner: "{{ worker_user }}"
+##  when: inventory_hostname == "db0"
+##
+##- name: 上传sql文件
+##  copy:
+##    src: "{{ db_sql_data }}"
+##    dest: "{{ pg_dir }}/{{ db_sql_data }}"
+##    group: "{{ worker_user }}"
+##    owner: "{{ worker_user }}"
+##  when: inventory_hostname == "db0"
+##  
+##- name: 导入数据库表结构
+##  become: yes
+##  become_user: "{{ worker_user }}"
+##  shell: "{{ pg_dir }}/bin/psql -d {{ db_name }} -U {{ worker_user }} -f {{ pg_dir }}/{{ db_sql_struct }}"
+##  when: inventory_hostname == "db0"
+##  
+##- name: 导入初始化数据
+##  become: yes
+##  become_user: "{{ worker_user }}"
+##  shell: "{{ pg_dir }}/bin/psql -d {{ db_name }} -U {{ worker_user }} -f {{ pg_dir }}/{{ db_sql_data }}"
+##  when: inventory_hostname == "db0"
+##  
+##- name: 表赋权
+##  become: yes
+##  become_user: "{{ worker_user }}"
+##  shell: "{{ pg_dir }}/bin/psql -U {{ worker_user }} -d {{ db_name }} -c 'GRANT SELECT,UPDATE,INSERT,DELETE ON ALL TABLES IN SCHEMA PUBLIC to {{ db_user }};'"
+##  when: inventory_hostname == "db0"
+##  
+##- name: 序列赋权
+##  become: yes
+##  become_user: "{{ worker_user }}"
+##  shell: "{{ pg_dir }}/bin/psql -U {{ worker_user }} -d {{ db_name }} -c 'GRANT USAGE,UPDATE,SELECT on hibernate_sequence to {{ db_user }};'"
+##  when: inventory_hostname == "db0"

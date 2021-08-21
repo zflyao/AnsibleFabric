@@ -1,0 +1,33 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+{% if own_orderer is sameas true %}
+OrdererOrgs:
+  - Name: {{ ord_name }}
+    Domain: {{ orderer_domain }}
+    EnableNodeOUs: false
+    CA:
+      Hostname: ca
+      Country: CN
+      Province: Jiangsu
+      Locality: Nanjing
+      OrganizationalUnit: {{ ord_name }}
+    Template:
+      Count: {{ orderer_hosts | length }}
+{% endif %}
+PeerOrgs:
+  - Name: {{ org_name }}
+    Domain: {{ peer_domain }}
+    EnableNodeOUs: false
+    CA:
+      Hostname: ca
+      Country: CN
+      Province: Jiangsu
+      Locality: Nanjing
+      OrganizationalUnit: {{ org_name }}    
+    Template:
+      Count: {{ peer_hosts | length }}
+    Users:
+      Count: 2

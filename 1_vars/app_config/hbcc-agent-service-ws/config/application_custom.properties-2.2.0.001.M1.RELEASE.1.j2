@@ -1,0 +1,16 @@
+#log
+logging.config={{ work_dir }}/config/logback-spring.xml
+#spring
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+#mongodb
+hbcc.core.properties.mongodb.database={{ instance_vars.mongodb_database }}
+hbcc.core.properties.mongodb.addresses={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+##blockchian config
+hbcc.core.properties.blockChain[0].connection.pool.host={{ instances[instance_vars.api_instance]['platform-hfclient-sdk-ws']['domain'] }}
+hbcc.core.properties.blockChain[0].connection.pool.port={{ instances[instance_vars.api_instance]['platform-hfclient-sdk-ws']['listen_port'] }}
+hbcc.core.properties.blockChain[0].connection.pool.forceRefresh=false
+hbcc.core.properties.blockChain[0].connection.channel={{ eco_name }}_{{ instance_vars.channel }}
+hbcc.core.properties.blockChain[0].connection.enableSSL=false
+hbcc.core.properties.blockChain[0].connection.supportedProtocols=TLSv1
+hbcc.core.properties.blockChain[0].connection.enableConnectionReuse=false

@@ -1,0 +1,28 @@
+# 用法：
+# （假设需要在通道 channelexample 上新增 Orderer 分组名为 ord3，该 Orderer 所在组名为 org3，）
+# 1. 在 group_vars/all.yml 中的 fabric_channels.channelexample.ords 的后面添加待加入的 Orderer 分组名称 ord3；
+# 2. 修改待加入组织的组变量 group_vars/org3.yml 的 join_channels，添加需要加入的通道名称 channelexample；
+# 3. 命令行变量 channel 指定待加入的通道；addord 指定待加入的 Orderer 分组名称。
+# 示例：ansible-playbook -e channel=channelexample -e addord=ord3 C3.2-MembershipOrderer.yml
+
+
+- name: 设置变量 adminpeer 和 adminorderer
+  hosts: localhost
+  gather_facts: false
+  tags: always
+  tasks:
+  - set_fact:
+      adminpeer: "peer0.{{ fabric_genesis_orgs['orgs'][0] }}"
+      adminorderer: "orderer0.{{fabric_genesis_orgs['ords'][0] }}"
+
+- name: 将 {{ addord }} 加入通道 {{ channel }}
+  hosts: "{{ hostvars['localhost']['adminpeer'] }}"
+  tasks:
+  - import_role:
+      name: fabric_cli
+    vars:
+      operation: membership_orderer
+      adding_orderer_domain: "{{ hostvars['orderer0.'~addord]['orderer_domain'] }}"
+      adding_ord_mspname: "{{ hostvars['orderer0.'~addord]['ord_mspname'] }}"
+      adding_ord_mspid: "{{ hostvars['orderer0.'~addord]['ord_mspid'] }}"
+      # adminpeer: "{{ hostvars['localhost']['adminpeer'] }}"

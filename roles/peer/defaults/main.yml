@@ -1,0 +1,19 @@
+---
+peer_id: "{{ inventory_hostname | regex_search('\\d+') }}"
+default_orderer_server: orderer{{ peer_id }}.{{ orderer_domain }}
+default_orderer_port: "{% if own_orderer %}7050{% else %}700{{ peer_id | int + 1 }}{% endif %}"
+
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+
+fabric_harbor_project: fabric-guomi/hyperledger
+cc_harbor_project: fabric-guomi/runchain
+fabric_deploy_ver: 1.4.9sm
+cc_nodeevn_tag: 1.4.9sm-patched
+fabric_minor_ver: "{{ fabric_deploy_ver.split('.')[1] }}"
+fabric_home: "{{ worker_home }}/{{ inventory_hostname | regex_replace('(.*\\d+).(.*\\d+)$','\\1_\\2') }}"
+fabric_data: "{{ fabric_home }}/mount"
+peer_dictory: "{{ inventory_hostname | regex_replace('(.*\\d+).(.*\\d+)$','\\1_\\2') }}"
+
+slb:

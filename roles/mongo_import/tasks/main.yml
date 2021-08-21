@@ -1,0 +1,11 @@
+---
+- name: Upload json to MongoP
+  copy:
+    src: summary_files/mongo/{{ version }}/
+    dest: /home/{{ mongo_user }}/mongoimport/
+    backup: yes
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+
+- name: Import specified json to mongodb
+  command: 

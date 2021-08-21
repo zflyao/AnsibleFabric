@@ -1,0 +1,22 @@
+---
+- name: 判断本地 channel-artifacts/genesis.block 是否已存在，若存在则退出
+  stat:
+    path: "{{ playbook_dir }}/{{ env_src }}/channel-artifacts/genesis.block"
+  delegate_to: localhost
+  register: genesis_exist
+  failed_when: genesis_exist.stat.exists
+  tags: genesis
+
+- name: 生成创世区块
+  command: docker exec cli-{{ inventory_hostname }} /bin/bash /home/generate_artifacts.sh genesis
+  register: generate_genesis
+  args: 
+    chdir: "{{ cli_home }}/tools"
+  tags: genesis
+
+- name: 下载创世区块到本地
+  fetch:
+    src: "{{ cli_home }}/tools/channel-artifacts/genesis.block"
+    dest: "{{ playbook_dir }}/{{ env_src }}/channel-artifacts/"
+    flat: yes
+  tags: genesis

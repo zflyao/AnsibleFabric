@@ -1,0 +1,32 @@
+# 安装 Chaincode
+# 可选命令行变量：
+# inventory -- Peer 服务器的 inventory，默认值 org1_peer
+
+---
+
+- name: 安装 Chaincode
+  hosts: "{{ inventory | default('org1_peer') }}"
+  gather_facts: false
+  vars_files:
+    - 1_vars/common.yml    
+  vars:
+    operation: install_chaincode
+  tasks:
+  - name: 获取本节点加入的所有通道中的链码列表
+    set_fact:
+      cc_list: "{{ join_channels | map('extract', fabric_channels, 'chaincodes') | flatten }}"
+
+  - include_role:
+      name: fabric_cli
+    vars:
+      ccname: "{{ item.name }}"
+      version: "{{ item.version }}"
+    loop: "{{ cc_list }}"
+
+  - name: 获取已安装链码列表
+    shell: >
+      docker exec cli-{{ inventory_hostname }} peer chaincode list --installed 2>/dev/null
+    register: installed_chaincode
+
+  - debug:
+      msg: "{{ installed_chaincode.stdout_lines }}"

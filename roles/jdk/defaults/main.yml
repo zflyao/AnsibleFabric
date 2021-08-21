@@ -1,0 +1,6 @@
+---
+
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+summary_dir: "{{ worker_home }}/summary"

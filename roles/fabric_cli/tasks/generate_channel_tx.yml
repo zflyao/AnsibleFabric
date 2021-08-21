@@ -1,0 +1,22 @@
+- name: 判断本地 channel-artifacts/{{ channel_name }}_tx.pb 是否已存在
+  stat:
+    path: "{{ playbook_dir }}/{{ env_src }}/channel-artifacts/{{ channel_name }}_tx.pb"
+  delegate_to: localhost
+  register: channel_exist
+  tags: channel
+
+- name: 生成通道 tx 文件
+  command: docker exec cli-{{ inventory_hostname }} /bin/bash /home/generate_artifacts.sh channel {{ channel_name }} {{ org_name }}
+  register: generate_channel
+  args:
+    chdir: "{{ cli_home }}/tools"
+  tags: channel
+  when: not channel_exist.stat.exists
+
+- name: 下载通道 tx 文件到本地
+  fetch:
+    src: "{{ cli_home }}/tools/channel-artifacts/{{ channel_name }}_tx.pb"
+    dest: "{{ playbook_dir }}/{{ env_src }}/channel-artifacts/"
+    flat: yes
+  tags: channel
+  when: not channel_exist.stat.exists

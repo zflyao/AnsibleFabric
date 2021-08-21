@@ -1,0 +1,29 @@
+# 更新组织所在通道上的 Anchor Peer 配置
+# 请通过命令行变量 org 指定组织的名称，如 org=org1
+# 请确保 all.yml 中存在全局变量 fabric_channels，该变量指定了整个 fabric 网络中运行的 channel 列表
+# 如中途添加了新的通道，需通过命令行变量 channel 指定通道名称
+---
+
+- name: 更新组织 {{ org }} 所在通道上的 Anchor Peer 配置
+  hosts: peer0.{{ org | default('org1') }}
+  vars:
+    operation: update_anchor
+  tasks: 
+  - name: 使用变量 channel 时，只取此 channel 值
+    set_fact:
+      update_channels: 
+        "{{ channel }}": "{{ fabric_channels[channel] }}"
+    when: channel is defined
+
+  - name: 不提供变量 channel 时，使用 fabric_channels 值
+    set_fact:
+      update_channels: "{{ fabric_channels }}"
+    when: channel is undefined
+
+  - include_role:
+      name: fabric_cli
+    vars:
+      channel_name: "{{ channelitem.key }}"
+    loop: "{{ update_channels | dict2items }}"
+    loop_control:
+      loop_var: channelitem

@@ -1,0 +1,35 @@
+---
+- name: 启动 kafka 容器
+  command: docker-compose up -d
+  args:
+    chdir: "{{ kafka_home }}"
+  tags:
+    - rebuild
+
+- name: 等待 kafka 9092 监听
+  wait_for:
+    port: 9092
+    delay: 15
+  when: cluster_count|int == 1
+  tags:
+    - rebuild
+
+- name: 等待 kafka port 监听
+  wait_for:
+    port: "900{{ broker_id }}"
+    delay: 15
+  when: cluster_count|int > 1
+  tags:
+    - rebuild
+
+- name: 检查 kafka 服务状态
+  shell: docker logs `docker ps -aq -f name={{ inventory_hostname }}` | grep "started"
+  register: kafka_status
+  ignore_errors: yes
+  tags:
+    - rebuild
+- debug:
+    msg: "{{kafka_status.stdout}}"
+  ignore_errors: yes
+  tags:
+    - rebuild

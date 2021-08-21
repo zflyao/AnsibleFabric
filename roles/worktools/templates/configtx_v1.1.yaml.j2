@@ -1,0 +1,15 @@
+Organizations:
+    - &OrdererOrg{{ add_orgid }}
+        Name: Orderer{{ add_orgid }}MSP
+        ID: Orderer{{ add_orgid }}MSP
+        MSPDir: ../crypto-config/ordererOrganizations/ord{{ add_orgid }}.{{ fabric_domain }}/msp
+
+    - &Org{{ add_orgid }}
+        Name: Org{{ add_orgid }}MSP
+        ID: Org{{ add_orgid }}MSP
+        MSPDir: ../crypto-config/peerOrganizations/org{{ add_orgid }}.{{ fabric_domain }}/msp
+        AnchorPeers:
+            - Host: peer0.org{{ add_orgid }}.{{ fabric_domain }}
+              Port: 7051
+#            - Host: peer1.org{{ add_orgid }}.{{ fabric_domain }}
+#              Port: 7051

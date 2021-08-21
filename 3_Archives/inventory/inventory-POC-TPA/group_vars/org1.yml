@@ -1,0 +1,46 @@
+---
+# Fabric Peer
+org_name: org1
+org_mspid: Org1MSP
+peer_domain: "{{ org_name }}.{{ fabric_domain }}"
+join_channels:
+- channelfft
+
+# Fabric Orderer
+own_orderer: true
+ord_name: ord1
+ord_mspid: Orderer1MSP
+orderer_domain: "{{ ord_name }}.{{ fabric_domain }}"
+
+## Mongo
+#mongodb_port: 27010
+#mongodb_url: mongodb://{{ groups[org_name ~ '_mongodb'] | map('regex_replace','(.+)','\\1.' ~ fabric_domain ~ ':' ~ mongodb_port) | join(',') }}
+#mongodb_database_app: voucher
+#mongodb_database_platform: voucher_platform
+## PostgreSQL
+#pg_port: 5432
+#pg_url: jdbc:postgresql://db0.{{ peer_domain }}:{{ pg_port }}
+#pg_database_app: voucher
+#pg_database_platform: voucher_platform
+#pg_user: pg_user
+#pg_pass: pg_user123
+## RabbitMQ
+#rabbitmq_port: 5672
+#rabbitmq_address: "{{ groups[org_name ~ '_rabbitmq'] | map('regex_replace','(.+)','\\1.' ~ fabric_domain ~ ':' ~ rabbitmq_port) | join(',') }}"
+#rabbitmq_user: loc
+#rabbitmq_pass: loc
+#rabbitmq_exchange: "{{ instance_name }}Queue_{{ org_name }}"
+#rabbitmq_queue_app: "{{ instance_name }}Queue_{{ org_name }}"
+#rabbitmq_queue_platform: "{{ instance_name }}Queue_{{ org_name }}_platform"
+# SLB
+slb:
+  inner:
+  private:
+  public:
+## App Instances
+instances:
+  fft:
+    platform-hfclient-sdk-ws:
+      listen_port: 8888
+      domain: apiserver.{{ peer_domain }}
+      on_group: "{{ org_name }}_api"

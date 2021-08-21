@@ -1,0 +1,105 @@
+global
+    log 127.0.0.1 local0 info
+    maxconn    65535
+    daemon
+
+defaults
+    mode                    tcp
+    log                     global
+    option                  tcplog
+    option                  dontlognull
+   #option http-server-close
+    option tcpka
+#    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    30m
+    timeout queue           30m
+    timeout connect         30m
+    timeout client          30m
+    timeout server          30m
+    timeout client-fin      30m
+    timeout tunnel          1d
+    timeout server-fin      30m
+    timeout tarpit          900s
+    timeout http-keep-alive 900s
+    timeout check           30m
+    maxconn                 65535
+#---------------------------------------------------------------------
+#统计界面
+#---------------------------------------------------------------------
+listen stats
+    mode http
+    bind 0.0.0.0:1080
+    stats enable
+    stats hide-version
+    stats uri     /haproxy
+    stats realm   Haproxy\ Statistics
+    stats auth    admin:admin
+    stats admin if TRUE
+{% if kafka is defined %}
+#---------------------------------------------------------------------
+# kafka
+#---------------------------------------------------------------------
+{% for kafka_list in groups.kafka %}
+frontend {{ hostvars[kafka_list].inventory_hostname }}
+    bind *:{{ hostvars[kafka_list].kafka_port }}
+    default_backend {{ hostvars[kafka_list].inventory_hostname }}_backend
+ 
+backend {{ hostvars[kafka_list].inventory_hostname }}_backend
+    default-server inter 10m weight 30
+    server {{ hostvars[kafka_list].inventory_hostname }} {{ hostvars[kafka_list].ansible_ssh_host }}:{{ hostvars[kafka_list].kafka_port }} maxconn 4000
+{% endfor %}
+{% endif %}
+{% if orderer is defined %}
+#---------------------------------------------------------------------
+# org1_orderer
+#---------------------------------------------------------------------
+{% for order_list in groups.org1_orderer %}
+frontend {{ hostvars[order_list].inventory_hostname }}
+    bind *:{{ hostvars[order_list].order_port }}
+    default_backend {{ hostvars[order_list].inventory_hostname }}_backend
+ 
+backend {{ hostvars[order_list].inventory_hostname }}_backend
+    default-server inter 10m weight 30
+    server {{ hostvars[order_list].inventory_hostname }} {{ hostvars[order_list].ansible_ssh_host }}:{{ hostvars[order_list].order_port }} maxconn 2000
+{% endfor %}
+{% endif %}
+{% if ccname is defined %}
+{% for channel_list in ccname %}
+#---------------------------------------------------------------------
+# {{ channel_list }}
+#---------------------------------------------------------------------
+frontend {{ channel_list }}
+    bind *:{{ channel_add[channel_list].port }}
+    mode http
+    default_backend {{ channel_list }}_backend
+
+backend {{ channel_list }}_backend
+    mode http
+    balance roundrobin
+    option  httpchk HEAD /factor/keepaliveQuery HTTP/1.0
+    default-server inter 15m fall 3 weight 30
+{% for api_list in ownapi %}
+    server {{ hostvars[api_list].inventory_hostname }} {{ hostvars[api_list].ansible_ssh_host }}:{{ channel_add[channel_list].port }} check maxconn 2000
+{% endfor %}
+{% endfor %}
+{% endif %}
+{% if app is defined %}
+{% for app_list in app|sort %}
+#---------------------------------------------------------------------
+# {{ app_list }}
+#---------------------------------------------------------------------
+frontend {{ app_list }}
+    bind *:{{ app[app_list].port }}
+    mode http
+    default_backend {{ app_list }}_backend
+
+backend {{ app_list }}_backend
+    mode http
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+{% for java_list in ownjava %}
+#    server {{ hostvars[java_list].inventory_hostname }} {{ hostvars[java_list].ansible_ssh_host }}:{{ app[java_list].port }} check maxconn 2000
+{% endfor %}
+{% endfor %}
+{% endif %}

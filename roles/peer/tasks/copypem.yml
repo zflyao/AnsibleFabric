@@ -1,0 +1,7 @@
+---
+
+- name: 载入变量
+  include_vars: ../../../vars/var.yml
+
+- name: copy chaincode pem
+  shell: docker cp {{ fabric_home }}/conf/private.pem `docker ps -q -f name=rc-asset-1.0`:/usr/local/bin/

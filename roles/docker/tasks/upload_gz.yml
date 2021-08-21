@@ -1,0 +1,19 @@
+---
+
+- name: 解压 docker-ce 安装包
+  unarchive: 
+    src: "{{ playbook_dir }}/summary_files/docker/{{ item }}"
+    dest: "{{ summary_dir }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - docker-ce-17.06-centos.tgz
+
+- name: 安装 docker-ce
+  shell: rpm -ivh --force --nosignature {{ summary_dir }}/tools/{{ item }}/*.rpm > {{ item }}.log
+  args:
+    chdir: "{{ summary_dir }}/tools/{{ item }}"
+    warn: false
+  with_items: 
+    - docker-ce
+  ignore_errors: yes

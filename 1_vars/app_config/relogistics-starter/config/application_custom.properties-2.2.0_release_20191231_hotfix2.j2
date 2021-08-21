@@ -1,0 +1,57 @@
+#application config
+spring.application.name=RealLogisticsFinance
+spring.application.version=2.0.6
+server.port={{ instance_vars.listen_port }}
+
+# org11 config
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+
+mongodb.addresses={{ mongodb_url[10:] }}
+mongodb.database={{ instance_vars.mongodb_database }}
+cache.mongo.uri={{ mongodb_url[10:] }}
+cache.mongo.database={{ instance_vars.mongodb_cache_database }}
+
+#blockchian config
+blockChain.host={{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}
+blockChain.port={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+
+plugin.enable=true
+#org11 1 plugin service address
+plugin.url={{ instances['hbcc']['api-plugin-daohe']['domain'] }}:{{ instances['hbcc']['api-plugin-daohe']['listen_port'] }}
+
+hbcc.core.properties.portalFlag=false
+hbcc.ugm.portalUrl.ip={{ instances['hbcc']['portal-service-ws']['domain'] | default('app.finblockchain.com') }}
+hbcc.ugm.portalUrl.port={{ instances['hbcc']['portal-service-ws']['listen_port'] | default('8181') }}
+hbcc.ugm.portalUrl.webUrl=http://{{ instances['hbcc']['portal-service-ws']['public_addr'] | default('bcportal.finrunchain.com') }}
+
+# 20190925 change to release version
+daohe.plugin.id=59e208034ff2393f226e1734_urk2g35th8aol5js9df01ht5cfmghbp31533912867980
+
+# dev config
+#spring.datasource.url=jdbc:postgresql://10.10.6.15:5432/hbcc_new
+#spring.datasource.username=postgres
+#spring.datasource.password=123456
+#
+#mongodb.addresses=10.10.6.16:27010
+#mongodb.database=mongo
+#cache.mongo.uri=10.10.6.16:27010
+#cache.mongo.database=cache_database
+#
+##blockchian config
+#blockChain.host=10.10.6.20
+#blockChain.port=7777
+#
+#plugin.enable=false
+#plugin.url=10.10.255.15:15001
+
+#hbcc.core.properties.portalFlag=false
+#hbcc.ugm.portalUrl.ip=app.finrunchain.com
+#hbcc.ugm.portalUrl.port=8181
+#hbcc.ugm.portalUrl.webUrl=http://bcportal.finrunchain.com:80
+
+hoperun.http.sessionTimeoutMinutes=-1
+
+standingbook.time.interval=600
+hbcc.core.properties.blockChain.connection.channel=warehouseQueue

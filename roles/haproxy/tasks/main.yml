@@ -1,0 +1,100 @@
+---
+
+- name: 创建安装目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{worker_group}}"
+    owner: "{{worker_user}}"
+  with_items:
+    - "{{ summary_dir }}/tools"
+    - "{{ worker_home }}/haproxy/log"
+
+- name: copy haproxy rpm
+  copy: 
+    src: "{{ playbook_dir }}/summary_files/haproxy/haproxy-1.5.18-6.el7.x86_64.rpm"
+    dest: "{{ summary_dir }}/tools"
+    group: "{{worker_group}}"
+    owner: "{{worker_user}}"
+
+- name: 安装 haproxy
+  command: rpm -ivUh --force haproxy-1.5.18-6.el7.x86_64.rpm
+  args:
+    chdir: "{{ summary_dir }}/tools"
+    warn: false
+
+- name: config haproxy.cfg
+  template:
+    src: haproxy.cfg.j2
+    dest: "{{worker_home}}/haproxy/haproxy.cfg"
+    group: "{{worker_group}}"
+    owner: "{{worker_user}}"
+    mode: 0640
+#  notify:
+#    - restart haproxy
+
+- name: 修改属主
+  file:
+    path: /var/lib/haproxy
+    group: "{{worker_group}}"
+    owner: "{{worker_user}}"
+
+- name: 备份rsyslog.conf
+  copy:
+    src: /etc/rsyslog.conf
+    dest: /etc/rsyslog.conf.old
+    remote_src: yes
+    backup: yes
+
+- name: 修改rsyslog.conf
+  lineinfile:
+    path: /etc/rsyslog.conf
+    line: "{{ item }}"
+  with_items:
+    - $ModLoad imudp
+    - $UDPServerRun 514
+    - '# Save haproxy log'
+    - "local0.* {{worker_home}}/haproxy/log/haproxy.log"
+ 
+- name: 备份rsyslog
+  copy:
+    src: /etc/sysconfig/rsyslog
+    dest: /etc/sysconfig/rsyslog.old
+    remote_src: yes
+    backup: yes
+
+- name: 修改rsyslog
+  lineinfile:
+    path: /etc/sysconfig/rsyslog
+    regexp: '^SYSLOGD_OPTIONS'
+    line: 'SYSLOGD_OPTIONS="-r -m 0 -c 2"'
+#  notify:
+#    - restart rsyslog   
+
+- name: restart rsyslog
+  service: 
+    name: rsyslog
+    state: restarted
+
+- name: 启动haproxy服务
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: haproxy -f {{worker_home}}/haproxy/haproxy.cfg
+
+- name: "目录属主设为{{ worker_user }}用户"
+  file:
+    path: "{{ worker_home }}/haproxy"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes
+
+- name: 检查监听端口
+  shell: netstat -lntp | grep haproxy
+  register: haproxy_port
+- debug:
+    msg: "{{ haproxy_port.stdout_lines }}"
+
+- name: 检查回显
+  wait_for:
+    timeout: 10   

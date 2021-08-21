@@ -1,0 +1,41 @@
+---
+# - name: 检测主机到 Kafka {% if groups.kafka | length == 1 %}9092{% else %}SLB{% endif %} 端口连通性
+#   wait_for:
+#     host: "{% if 'kafka1' in groups[org_name] %}{{ slb.inner | default(hostvars['kafka1']['ansible_ssh_host'], true) }}{% else %}{{ hostvars['kafka1']['slb'][conn_mode] | default(hostvars['kafka1']['ansible_ssh_host'], true) }}{% endif %}"
+#     port: "{% if groups.kafka | length == 1 %}9092{% else %}900{{ ansible_loop.index }}{% endif %}"
+#     timeout: 5
+#   loop: "{{ groups.kafka }}"
+#   loop_control:
+#     extended: yes
+
+- name: wait_for Kafka {% if groups.kafka | length == 1 %}9092{% else %}SLB{% endif %} port
+  wait_for:
+    host: "{% if slb is not none %}{{ slb }}{% else %}{{ hostvars[res]['ansible_ssh_host'] }}{% endif %}"
+    port: "{% if groups.kafka | length == 1 %}9092{% else %}900{{ ansible_loop.index }}{% endif %}"
+    timeout: 5
+  loop: "{{ groups.kafka }}"
+  loop_control:
+    loop_var: res
+    extended: yes
+  when: fabric_orderer_type == "kafka"
+
+- name: 启动 {{ inventory_hostname }}
+  command: docker-compose up -d
+  args:
+    chdir: "{{ fabric_home }}"
+
+- name: 获取 Container ID
+  command: docker ps -aq -f name=^/{{ inventory_hostname }}$ --no-trunc
+  register: cid
+
+- name: 检测启动结果
+  wait_for:
+    path: "/var/lib/docker/containers/{{ cid.stdout }}/{{ cid.stdout }}-json.log"
+    search_regex: "Start phase completed successfully"
+  when: fabric_orderer_type == "kafka"
+
+- name: 检测启动结果 for raft
+  wait_for:
+    path: "/var/lib/docker/containers/{{ cid.stdout }}/{{ cid.stdout }}-json.log"
+    search_regex: "Raft leader changed"
+  when: fabric_orderer_type == "etcdraft"

@@ -1,0 +1,51 @@
+---
+- import_tasks: stop.yml
+- import_tasks: clear.yml
+
+- name: 载入 orderer 镜像
+  import_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ fabric_harbor_project }}"
+    image_name: fabric-orderer
+    image_tag: "{{ fabric_deploy_ver }}"
+
+- name: mkdir orderer
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  loop:
+  - "{{ fabric_home }}"
+  - "{{ fabric_data }}"  
+
+- name: 上传 genesis.block
+  copy:
+    src: "{{ env_src }}/channel-artifacts/genesis.block"
+    dest: "{{ fabric_home }}/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+    backup: yes
+
+- name: 上传 KafkaTLS 证书
+  unarchive: 
+    src: "{{ kafka_certs_dir }}/kafkaTLSclient-{{ kafka_domain |default('kafka') }}.tar.gz"
+    dest: "{{ fabric_home }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: fabric_orderer_type == "kafka"
+
+- name: 上传 Orderer MSP
+  import_role:
+    name: fabric_cli
+    tasks_from: upload_cert_orderer
+
+- name: 生成 docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ fabric_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+
+- include_tasks: start.yml

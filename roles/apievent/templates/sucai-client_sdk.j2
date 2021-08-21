@@ -1,0 +1,39 @@
+crypto:
+  family: ecdsa
+  algorithm: P256-SHA256
+  hash: SHA2-256
+orderers:
+  orderer{{ api_id }}:
+    host: orderer{{ api_id }}.ord1.finblockchain.cn:7001
+    insecure: false
+    tlsPath: ./crypto-config/ordererOrganizations/ord1.finblockchain.cn/orderers/orderer{{ api_id }}.ord1.finblockchain.cn/tls/server.crt
+peers:
+  peer{{ api_id }}:
+    host: peer{{ api_id }}.org{{ org_id }}.{{ fabric_domain }}:7051
+    orgname: Org{{ org_id }}MSP
+    insecure: false
+    tlsPath: ./crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/peers/peer{{ api_id }}.org{{ org_id }}.{{ fabric_domain }}/tls/server.crt
+eventPeers:
+  peer{{ api_id }}:
+    host: peer{{ api_id }}.org{{ org_id }}.{{ fabric_domain }}:7053
+    insecure: false
+    tlsPath: ./crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/peers/peer{{ api_id }}.org{{ org_id }}.{{ fabric_domain }}/tls/server.crt
+other:
+    mspConfigPath: ./crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/users/Admin@org{{ org_id }}.{{ fabric_domain }}/msp
+    localMspId:          Org{{ org_id }}MSP
+    channelId:           channel{{ ccname }}
+    chaincodeName:       {{ ccname }}
+    chaincodeVersion:    {{ channel_add[ccname].ccver }}
+policy:
+    orgs: Org{{ org_id }}MSP
+    rule: or
+orderer_addererport: "orderer{{ api_id }}.ord1.finblockchain.cn 7001"
+apiserver:
+    listenport: {{ api_port }}
+mq:
+    mq_address:
+{% for mq_hosts in groups[rabbitmq_gname] %}
+      - "amqp://loc:loc@{{ mq_hosts }}:5672/"
+{% endfor %}
+    exchange_name: "{{ ccname }}Exchange"
+    sleeptime: 60

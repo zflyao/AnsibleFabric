@@ -1,0 +1,5 @@
+db.getSiblingDB("admin").auth("{{ mongodb_cluster_admin_name }}", "{{ mongodb_cluster_admin_passwd }}" )
+sh.addShard( "shard001/mongo-data1.{{ domain }}:{{ shard001_port }},mongo-data2.{{ domain }}:{{ shard001_port }},mongo-data3.{{ domain }}:{{ shard001_port }}")
+sh.addShard( "shard002/mongo-data4.{{ domain }}:{{ shard002_port }},mongo-data5.{{ domain }}:{{ shard002_port }},mongo-data6.{{ domain }}:{{ shard002_port }}")
+sh.addShard( "shard003/mongo-data7.{{ domain }}:{{ shard003_port }},mongo-data8.{{ domain }}:{{ shard003_port }},mongo-data9.{{ domain }}:{{ shard003_port }}")
+sh.enableSharding("mongo")

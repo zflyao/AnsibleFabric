@@ -1,0 +1,46 @@
+
+spring:
+    profiles:
+# 建议把区块链localmsp相关配置另放文件单独配置，然后在此文件通过active激活对应的配置文件，此处的值为application-<profile name>.yml
+#        active: localmsp_7_10
+        active: localmsp
+#        active: localmsp_255_44
+
+#服务启动监听端口
+server.port: {{ instance_vars.listen_port }}
+
+
+platform:
+    component:
+#是否启用swagger api 页面，建议开发环境配置true，产品环境false
+        apidoc.enable-swagger2: true
+        blockchain:
+            client:
+#表示msp配置使用Yaml模式解析，已localMsp互斥
+                enableProviderYaml: false
+#表示msp配置使用LocalMSP模式解析，已Yaml互斥，建议使用此模式，减少配置复杂度
+                enableProviderLocalMSP: true
+
+#此项配置开发修改，默认无需修改
+                invokeWaitTime: 32000
+                deployWaitTime: 120000
+                proposalWaitTime: 120000
+                
+#此项配置开发修改，默认无需修改
+                api:
+                    enableEcology: false
+                    enableLedgerV1X: true
+                    enableLedgerV3X: true
+#此项配置开发修改，默认无需修改
+                nettyChannelBuilderOption:
+                    maxInboundMessageSize: 20000000
+                    keepAliveTime: 5
+                    keepAliveTimeout: 8
+                    keepAliveWithoutCalls: true
+               
+#此项配置开发修改，默认无需修改
+spring.jackson.property-naming-strategy: SNAKE_CASE
+#此项配置开发修改，默认无需修改
+spring.rabbitmq.listener.direct.retry.enabled: true
+#此项配置开发修改，默认无需修改
+spring.rabbitmq.listener.simple.retry.enabled: true        

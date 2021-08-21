@@ -1,0 +1,13 @@
+- name: 启动 Peer
+  command: docker-compose up -d
+  args:
+    chdir: "{{ fabric_home }}"
+
+- name: 获取 Container ID
+  command: docker ps -aq -f name=^/{{ inventory_hostname }}$ --no-trunc
+  register: cid
+
+- name: 检测启动结果
+  wait_for:
+    path: "/var/lib/docker/containers/{{ cid.stdout }}/{{ cid.stdout }}-json.log"
+    search_regex: "Started peer with ID="

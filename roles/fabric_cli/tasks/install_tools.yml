@@ -1,0 +1,57 @@
+---
+- import_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ fabric_harbor_project }}"
+    image_name: fabric-tools
+    image_tag: "{{ fabric_deploy_ver }}"
+
+- name: 创建工作目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  loop:
+    - "{{ cli_home }}/artifacts"
+    - "{{ cli_home }}/tools"
+    - "{{ worker_home }}/crypto-config/ordererOrganizations"
+    - "{{ worker_home }}/crypto-config/peerOrganizations"
+
+- name: 上传docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ cli_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: 启动 docker 容器
+  command: docker-compose up -d
+  args:
+    chdir: "{{ cli_home }}"
+
+- name: 等待5秒
+  wait_for:
+    timeout: 5
+
+- name: 检查容器启动是否正常
+  shell: docker ps -a -f name=^/cli-{{ inventory_hostname }}$
+  register: cli_status
+
+- name: 输出内容
+  debug:
+    msg: "{{ cli_status.stdout_lines }}"
+
+- name: 上传通用操作脚本
+  copy:
+    src: "{{ item }}"
+    dest: "{{ cli_home }}/tools/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+    backup: yes
+    mode: 0755
+  loop:
+  - peer_channel.sh
+  - peer_operation.sh
+  tags: scripts

@@ -1,0 +1,24 @@
+---
+- name: Start Java by Supervisor
+  supervisorctl:
+    config: "{{ supervisor_conf }}"
+    name: "{{ app_id }}"
+    state: started
+  tags:
+  - start
+  - restart
+  when: (instance_vars.supervisor is defined) and instance_vars.supervisor
+
+- name: Start Java by Script
+  command: ./deploy.sh start
+  args:
+    chdir: "{{ work_dir }}"
+  tags:
+  - start
+  - restart
+  when: (instance_vars.supervisor is undefined) or (not instance_vars.supervisor)
+
+- include_tasks: healthz.yml
+  tags:
+  - start
+  - restart

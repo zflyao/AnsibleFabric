@@ -1,0 +1,2 @@
+- name: Check if cli container is running
+  shell: docker ps -f 'name=cli-{{ inventory_hostname }}' | grep cli-{{ inventory_hostname }}

@@ -1,0 +1,5 @@
+- name: postgresql
+  hosts: "org{{org}}_pg"
+  roles:
+  - role: postgres
+

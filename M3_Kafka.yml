@@ -1,0 +1,25 @@
+# kafka deploy usage
+# Use the -e input variable, eg："inventory=kafka kafka_lb="
+# inventory 默认kafka群组
+# 如果kafka solo版，无需输入 kafka_lb 等入参
+# 默认使用harbor pull image，kafka-image 默认项目blockchain 
+# fabric_deploy_ver: 区块链底层部署的版本，default is 1.4.0
+# kafka_domain: defaut is `finblockchain.cn` 
+---
+
+- name: kafka
+  hosts: "{{ inventory | default ('kafka') }}"
+  gather_facts: true
+  roles:
+    - role: kafka
+      vars:
+        operation: tlscerts
+      delegate_to: localhost
+      run_once: true
+      tags:
+      - cert
+      - never
+
+    - role: kafka
+      vars:
+        operation: install

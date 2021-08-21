@@ -1,0 +1,13 @@
+---
+
+#- name: restart supervisor
+#  become: yes
+#  become_user: "{{ supervisor_user }}"
+#  command: "supervisorctl -c {{ supervisor_dir }}/supervisord.conf stop all"
+#  notify: do restart supervisor
+#
+#- name: do restart supervisor
+#  become: yes
+#  become_user: "{{ supervisor_user }}"
+#  command: "supervisorctl -c {{ supervisor_dir }}/supervisord.conf stop all"
+#  notify: do restart supervisor

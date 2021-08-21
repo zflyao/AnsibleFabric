@@ -1,0 +1,10 @@
+---
+cluster_count: "{{ groups['kafka'] | length }}"
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+kafka_home: "{{ worker_home }}/{{ inventory_hostname }}"
+fabric_data: "./mount"
+broker_id: "{{ inventory_hostname | regex_search('\\d+') }}"
+kafka_lb: "{{ slb['inner'] }}"
+kafka_certs_dir: "{{ playbook_dir }}/{{ env_src }}/kafka"

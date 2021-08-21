@@ -1,0 +1,2 @@
+- name: 上传对应节点的 MSP
+  include_tasks: upload_cert_{{ node_type }}.yml

@@ -1,0 +1,75 @@
+---
+
+#- name: 载入变量
+#  include_vars: "../../../vars/{{ item }}.yml"
+#  with_items:
+#    - var
+
+- name: 检查 mongodb 工作目录
+  stat:
+    path: "{{ worker_home }}/mongodb"
+  register: mongodb_directory_status
+
+- name: debug info for check mongodb directory status
+  debug:
+    msg: "********* mongodb directory is exits **********"
+  when: mongodb_directory_status.stat.exists
+
+- name: 解压 mongodb.tar 安装包
+  unarchive:
+    copy: yes
+    src: ../../summary_files/mongo/mongodb-linux-x86_64-3.4.7.tgz
+    dest: "{{worker_home}}"
+    group: "{{ mongo_group }}"
+    owner: "{{ mongo_user }}"
+  when: not mongodb_directory_status.stat.exists
+
+- name: 重名命 mongodb 安装目录
+  command: mv {{ worker_home }}/mongodb-linux-x86_64-3.4.7 {{ worker_home }}/mongodb
+  when: not mongodb_directory_status.stat.exists
+
+- name: 创建 mongodb logs/conf 目录
+  file:
+    path: "{{ worker_home }}/mongodb/{{ item }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+    state: directory
+  with_items:
+    - logs
+    - conf
+  when: not mongodb_directory_status.stat.exists
+
+- name: 创建 mongodb datapath 目录
+  file:
+    path: "{{ mongodbpath|default('data') }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+    state: directory
+  when: not mongodb_directory_status.stat.exists
+
+- name: chown mongodb owner and group
+  file:
+    path: "{{ worker_home }}/mongodb"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+    recurse: yes
+    state: directory
+
+- name: 注册系统 mongodb 环境变量
+  lineinfile:
+    path: /etc/profile
+    line: 'export PATH={{worker_home}}/mongodb/bin:$PATH'
+
+- import_tasks: "{{ architect |default('replica') }}.yml"
+
+- name: 检查 mongodb 进程
+  shell: ps -ef | grep mongo | grep -v grep
+  ignore_errors: yes
+  register: mongodb_process_status
+
+- debug:
+    msg: "{{ mongodb_process_status.stdout_lines }}"
+
+- name: 检查回显
+  wait_for:
+    timeout: 15

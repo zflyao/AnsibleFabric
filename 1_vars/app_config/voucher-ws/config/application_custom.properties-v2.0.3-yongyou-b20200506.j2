@@ -1,0 +1,72 @@
+# ===================================================================
+# Spring Boot configuration for the "dev" profile.
+# ===================================================================
+
+# 启用溯源组件
+platform.tracking.enable=true
+platform.component.client.platformRuntimeServer=http://{{ instances[instance_name]['platform-service-runtime-ws']['domain'] }}:{{ instances[instance_name]['platform-service-runtime-ws']['listen_port'] }}
+
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+
+server.port={{ instance_vars.listen_port }}
+
+spring.rabbitmq.addresses={{ rabbitmq_address }}
+spring.rabbitmq.username={{ rabbitmq_user }}
+spring.rabbitmq.password={{ rabbitmq_pass }}
+
+hoperun.plugins.amqp.fanoutQueueName={{ instance_vars.rabbitmq_queue }}
+hoperun.plugins.amqp.fanoutExchangeName={{ instance_vars.rabbitmq_exchange }}
+hoperun.plugins.amqp.isStartEventReceiver=true
+
+runchain.application.businessLine=VOUCHER
+runchain.application.enableVerifySign=true
+runchain.voucher.devMode=false
+
+# 业务回调配置
+runchain.trade.service.handlers[VOUCHER]: businessDataCallback
+logging.file={{ work_dir }}/logs/voucher.log
+logging.config={{ work_dir }}/config/logback-spring.xml
+# =============================================
+
+hoperun.platform.base.platformPriKeyFile={{ work_dir }}/config/rsa_pri_0.pem
+hoperun.platform.base.platformPubKeyFile={{ work_dir }}/config/rsa_pub_0.pem
+hoperun.platform.base.apiserver.host=http://{{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}:{{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}/assetTradingPlatform
+
+runchain.application.keyListServiceUrl=http://{{ instances[instance_name]['keylist-ws']['domain'] }}:{{ instances[instance_name]['keylist-ws']['listen_port'] }}/api/keylist
+
+# 业务回调配置
+runchain.trade.service.handlers[MYB]: businessDataCallback
+runchain.trade.service.handlers[DF]: factoringDataCallback
+
+# 保理配置
+collection.factoring.finish: factoring
+collection.factoring.local: factoring_local
+collection.factoring.temp: factoring_tmp
+collection.factoring.full: factoring_full
+
+platform.component.statemachine.enable=true
+# 启动保理集成
+runchain.factoring.integration.enabled=true
+
+platform.component.statemachine.umlFilePath1={{ work_dir }}/config/factoring-contract.uml
+platform.component.statemachine.umlFilePath2={{ work_dir }}/config/transfer-contract.uml
+platform.component.statemachine.umlFilePath3={{ work_dir }}/config/payment.uml
+
+# {{ env_type }}
+runchain.fdd.sdk.appId={{ thirdparty['fdd'][env_type]['appId'] | default(thirdparty['fdd']['default']['appId']) }}
+runchain.fdd.sdk.appSecret={{ thirdparty['fdd'][env_type]['appSecret'] | default(thirdparty['fdd']['default']['appSecret']) }}
+runchain.fdd.sdk.url={{ thirdparty['fdd'][env_type]['url'] | default(thirdparty['fdd']['default']['url']) }}
+
+runchain.fdd.sdk.notifyUrl=http://{{ instance_vars.public_addr }}
+runchain.fdd.sdk.returnUrl=http://{{ instance_vars.public_addr }}/success.html
+
+hoperun.platform.base.callBackQueryInterval=3000
+
+#企业信息配置
+company.info.code=http://10.21.102.162:28686/jeecg-boot/comInfoCer/getComInfoCo/
+#法人二要素鉴权
+authentica.two=http://10.21.102.162:28686/jeecg-boot/auth/two

@@ -1,0 +1,143 @@
+---
+
+- name: 确保生成dbpath路径
+  file:
+    path: "{{ sharding_dbpath }}"
+    state: directory
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 拷贝 sharding 配置文件
+  template:
+    src: sharding-sharding.conf.j2
+    dest: "{{ worker_home }}/mongodb/conf/sharding-{{ replset }}.conf"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+
+#- name: get pid of mongodb
+#  shell: pidof mongod
+#  register: pidof_mongod_sharding
+#  ignore_errors: yes
+
+- name: 启动 mongo-sharding 集群
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongod -f {{worker_home}}/mongodb/conf/sharding-{{ replset }}.conf"
+  args:
+    chdir: "{{worker_home}}/mongodb/bin"
+  ignore_errors: yes
+  register: mongo_sharding_start
+#  when: pidof_mongod_sharding.rc == 1
+- debug:
+    msg: "{{ mongo_sharding_start.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 等待 mongo-sharding port 监听
+  wait_for:
+    port: "{{ shard_port }}"
+    delay: 30
+
+- name: 检查 mongo-shrading 设置状态
+  shell: "{{ worker_home }}/mongodb/bin/mongo --port {{ shard_port }} --quiet --eval 'rs.status().ok'"
+  register: sharding_rs_ok
+  ignore_errors: yes
+- debug:
+    msg: "{{ sharding_rs_ok.stdout }}"
+  ignore_errors: yes
+
+- name: 等待5s检查回显
+  wait_for:
+    port: "{{ shard_port }}"
+    delay: 5
+
+- name: 在主sharding上传 sharding 初始化脚本
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ worker_home }}/mongodb/conf/{{ item }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_user }}"
+  with_items:
+    - sharding-sharding.js
+    - creat_clusteruser.js
+    - creat_admin.js
+    - creat_user.js
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+
+- name: 在主sharding上执行初始化脚本
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ shard_port }} --quiet {{ worker_home }}/mongodb/conf/sharding-sharding.js"
+  ignore_errors: yes
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+
+- name: 等待 mongo-sharding port 监听
+  wait_for:
+    port: "{{ shard_port }}"
+    delay: 15
+
+- name: 在主sharding上创建 admin 用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ shard_port }} admin --quiet {{ worker_home }}/mongodb/conf/creat_admin.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_admin
+  ignore_errors: yes
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+- debug:
+    msg: "{{ add_mongo_admin.stdout_lines }}"
+  ignore_errors: yes
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+
+- name: 等待 mongo-sharding port 监听
+  wait_for:
+    port: "{{ shard_port }}"
+    delay: 15
+
+- name: 在主sharding上创建 cluster 用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ shard_port }} admin --quiet {{ worker_home }}/mongodb/conf/creat_clusteruser.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_cluster
+  ignore_errors: yes
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+- debug:
+    msg: "{{ add_mongo_cluster.stdout_lines }}"
+  ignore_errors: yes
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+
+- name: 等待 mongo-sharding port 监听
+  wait_for:
+    port: "{{ shard_port }}"
+    delay: 15
+
+- name: 在主sharding上创建普通用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ shard_port }} mongo --quiet {{ worker_home }}/mongodb/conf/creat_user.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_user
+  ignore_errors: yes
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+- debug:
+    msg: "{{ add_mongo_user.stdout_lines }}"
+  ignore_errors: yes
+  when: (inventory_hostname == "mongo_data1" or inventory_hostname == "mongo_data4" or inventory_hostname == "mongo_data7") and sharding_rs_ok.stdout == "0"
+
+- name: 等待 mongo-sharding port 监听
+  wait_for:
+    port: "{{ shard_port }}"
+    delay: 15
+
+- name: 检查 mongo-sharding 成员设置
+  shell: "{{ worker_home }}/mongodb/bin/mongo --port {{ shard_port }} --username {{ mongodb_root_name }} --password {{ mongodb_root_passwd }} --authenticationDatabase admin --quiet --eval 'rs.status().members'"
+  register: sharding_rs_members
+- debug:
+    msg: "{{ sharding_rs_members.stdout_lines }}"
+
+- name: 检查回显
+  wait_for:
+    timeout: 5

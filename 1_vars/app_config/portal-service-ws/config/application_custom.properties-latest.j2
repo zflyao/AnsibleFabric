@@ -1,0 +1,20 @@
+spring.application.name=portal
+spring.application.version=1.2.3
+server.port={{ instance_vars.listen_port }}
+##database config
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+
+mongodb.addresses={{ mongodb_url[10:] }}
+mongodb.database={{ instance_vars.mongodb_database }}
+cache.mongo.uri={{ mongodb_url[10:] }}
+cache.mongo.database={{ instance_vars.mongodb_cache_database }}
+
+#blockchian config
+blockChain.host={{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}
+blockChain.port={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+
+hbcc.ugm.portalUrl.ip={{ instances[instance_name]['zone-service-ws']['domain'] }}
+hbcc.ugm.portalUrl.port={{ instances[instance_name]['zone-service-ws']['public_port'] }}
+#hbcc.ugm.portalUrl.webUrl=http://10.10.5.139:9002

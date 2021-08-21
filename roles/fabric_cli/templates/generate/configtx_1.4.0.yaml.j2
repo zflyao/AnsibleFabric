@@ -1,0 +1,166 @@
+---
+Organizations:
+{% for each_ord in fabric_genesis_orgs.ords %}
+    - &{{ each_ord }}
+        Name: {{ hostvars['orderer0.'~each_ord]['ord_mspname'] }}
+        ID: {{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}
+        MSPDir: /etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/msp
+        Policies: &{{ each_ord }}Policies
+            Readers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('{{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}.admin')"
+{% endfor %}
+
+{% for each_org in fabric_genesis_orgs.orgs %}
+    - &{{ each_org }}
+        Name: {{ hostvars['peer0.'~each_org]['org_mspname'] }}
+        ID: {{ hostvars['peer0.'~each_org]['org_mspid'] }}
+        MSPDir: /etc/hyperledger/fabric/crypto-config/peerOrganizations/{{ hostvars['peer0.'~each_org]['peer_domain'] }}/msp
+        Policies: &{{ each_org }}Policies
+            Readers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['peer0.'~each_org]['org_mspid'] }}.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['peer0.'~each_org]['org_mspid'] }}.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('{{ hostvars['peer0.'~each_org]['org_mspid'] }}.admin')"
+        AnchorPeers:
+            - Host: peer0.{{ hostvars['peer0.'~each_org]['peer_domain'] }}
+              Port: 7051
+{% endfor %}
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        V1_3: true
+    Orderer: &OrdererCapabilities
+        V1_1: true
+    Application: &ApplicationCapabilities
+        V1_3: true
+        V1_2: false
+        V1_1: false
+
+Application: &ApplicationDefaults
+    ACLs: &ACLsDefault
+        lscc/ChaincodeExists: /Channel/Application/Readers
+        lscc/GetDeploymentSpec: /Channel/Application/Readers
+        lscc/GetChaincodeData: /Channel/Application/Readers
+        lscc/GetInstantiatedChaincodes: /Channel/Application/Readers
+        qscc/GetChainInfo: /Channel/Application/Readers
+        qscc/GetBlockByNumber: /Channel/Application/Readers
+        qscc/GetBlockByHash: /Channel/Application/Readers
+        qscc/GetTransactionByID: /Channel/Application/Readers
+        qscc/GetBlockByTxID: /Channel/Application/Readers
+        cscc/GetConfigBlock: /Channel/Application/Readers
+        cscc/GetConfigTree: /Channel/Application/Readers
+        cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
+        peer/Propose: /Channel/Application/Writers
+        peer/ChaincodeToChaincode: /Channel/Application/Readers
+        event/Block: /Channel/Application/Readers
+        event/FilteredBlock: /Channel/Application/Readers
+    Organizations:
+    Policies: &ApplicationDefaultPolicies
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "ANY Admins"
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+    OrdererType: {{ fabric_orderer_type }}
+    Addresses:
+{% for each_ord in fabric_genesis_orgs.ords %}
+{% if groups[each_ord~'_orderer'] | length == 1 %}
+        - orderer0.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}:7050
+{% else %}
+{% for number in range(groups[each_ord~'_orderer'] | length) %}
+        - orderer{{ number }}.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}:700{{ number + 1 }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+    BatchTimeout: 1s
+    BatchSize:
+        MaxMessageCount: 100
+        AbsoluteMaxBytes: 98 MB
+        PreferredMaxBytes: 512 KB
+    MaxChannels: 0
+{% if fabric_orderer_type == 'kafka' %}
+    Kafka:
+        Brokers:
+{% if kafka_hosts | length == 1 %}
+            - broker.{{ kafka_domain }}:9092
+{% else %}{% for number in range(kafka_hosts | length) %}
+            - broker{{ number + 1 }}.{{ kafka_domain }}:900{{ number + 1 }}
+{% endfor %}
+{% endif %}        
+{% endif %}
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "ANY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+    Capabilities:
+        <<: *OrdererCapabilities
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+Profiles:
+    TwoOrgsOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+{% for each_ord in fabric_genesis_orgs.ords %}
+                - *{{ each_ord }}
+{% endfor %}
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+{% for each_org in fabric_genesis_orgs.orgs %}
+                    - *{{ each_org }}
+{% endfor %}
+
+{% for each_channel in fabric_channels | dict2items %}
+    {{ each_channel.key }}:
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+{% for each_org in each_channel.value.genesis_orgs %}
+                - *{{ each_org }}
+{% endfor %}
+{% endfor %}

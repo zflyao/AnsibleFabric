@@ -1,0 +1,73 @@
+#---------------------------------------------------------------------
+# org1
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local0 info
+    maxconn    65535 
+    daemon
+    stats socket /var/lib/haproxy/stats
+
+defaults
+    mode                    tcp
+    log                     global
+    option                  tcplog
+    option                  dontlognull
+    option tcpka
+    option                  redispatch
+    retries                 3
+    timeout http-request    900s
+    timeout queue           30m
+    timeout connect         30m
+    timeout client          30m
+    timeout server          30m
+    timeout client-fin      3s
+    timeout tunnel          1d
+    timeout server-fin      3s
+    timeout tarpit          900s
+    timeout http-keep-alive 900s
+    maxconn                 65535
+#---------------------------------------------------------------------
+#统计界面
+#---------------------------------------------------------------------
+listen stats
+    mode http
+    bind 0.0.0.0:1080
+    stats enable
+    stats hide-version
+    stats uri     /haproxy
+    stats realm   Haproxy\ Statistics
+    stats auth    admin:admin
+    stats admin if TRUE
+
+{% if hostvars[groups['kafka'][0]]['org_name'] == org_name %}
+#---------------------------------------------------------------------
+# kafka
+#---------------------------------------------------------------------
+{% for each_kafka in groups['kafka'] %}
+frontend {{ each_kafka }}
+    bind *:900{{ loop.index }}
+    mode tcp
+    default_backend {{ each_kafka }}_backend
+ 
+backend {{ each_kafka }}_backend
+    default-server inter 1h weight 30
+    server {{ each_kafka }} {{ hostvars[each_kafka]['ansible_ssh_host'] }}:900{{ loop.index }} check maxconn 4000
+{% endfor %}
+{% endif %}
+
+{% if own_orderer %}
+#---------------------------------------------------------------------
+# orderer
+#---------------------------------------------------------------------
+{% for each_orderer in groups[ord_name~'_orderer'] %}
+frontend {{ each_orderer }}
+    bind *:700{{ loop.index }}
+    mode tcp
+    default_backend {{ each_orderer }}_backend
+ 
+backend {{ each_orderer }}_backend
+    default-server inter 1h weight 30
+    server {{ each_orderer }} {{ hostvars[each_orderer]['ansible_ssh_host'] }}:700{{ loop.index }} check maxconn 4000
+{% endfor %}
+{% endif %}
+

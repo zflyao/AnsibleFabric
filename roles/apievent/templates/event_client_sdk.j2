@@ -1,0 +1,111 @@
+logging:
+
+    peer:       warning
+    node:       warning
+    network:    warning
+    version:    warning
+    protoutils: warning
+    error:      warning
+    msp:        critical
+
+    format: '%{color}%{time:2006-01-02 15:04:05.000 MST} [%{module}] %{shortfunc} -> %{level:.4s} %{id:03x}%{color:reset} %{message}'
+########################   client section   ################################################
+client:
+
+    peers:
+      # peer{{ api_id }}
+      - address: "peer{{api_id}}.org{{ org_id }}.{{ fabric_domain }}:7051"
+        eventHost: "peer{{api_id}}.ord{{ org_id }}.{{ fabric_domain }}"
+        eventPort: 7053
+        primary: true
+        localMspId: Org{{ org_id }}MSP
+        tls:
+          # Certificate location absolute path
+          certificate: "./crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/peers/peer{{ api_id }}.org{{ org_id }}.{{ fabric_domain }}/tls/ca.crt"
+          serverHostOverride: "peer{{ api_id }}"
+
+    orderer:
+        address: "orderer{{api_id}}.ord{{ org_id }}.{{ fabric_domain }}:7050"
+        tls:
+          # Certificate location absolute path
+          certificate: "./crypto-config/ordererOrganizations/ord{{ org_id }}.{{ fabric_domain }}/orderers/orderer{{ api_id }}.ord{{ org_id }}.{{ fabric_domain }}/msp/tlscacerts/tlsca.ord{{ org_id }}.{{ fabric_domain }}-cert.pem"
+          serverHostOverride: "orderer{{ api_id }}"
+#####################    Peer section    #######################################################
+peer:
+    # The Address this Peer will listen on
+    listenAddress: peer{{api_id}}.org{{ org_id }}.{{ fabric_domain }}:7053
+
+    # Setting for runtime.GOMAXPROCS(n). If n < 1, it does not change the current setting
+    gomaxprocs: -1
+    workers: 2
+
+    # TLS Settings for p2p communications
+    tls:
+        enabled: true 
+        rootcert:
+            file: ./crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/peers/peer{{ api_id }}.org{{ org_id }}.{{ fabric_domain }}/tls/ca.crt
+        # The server name use to verify the hostname returned by TLS handshake
+        serverhostoverride: peer{{ api_id }}
+
+    # BCCSP (Blockchain crypto provider): Select which crypto implementation or
+    # library to use
+    BCCSP:
+        Default: SW
+        SW:
+            # TODO: The default Hash and Security level needs refactoring to be
+            # fully configurable. Changing these defaults requires coordination
+            # SHA2 is hardcoded in several places, not only BCCSP
+            Hash: SHA2
+            Security: 256
+            # Location of Key Store, can be subdirectory of SbftLocal.DataDir
+            FileKeyStore:
+                # If "", defaults to 'mspConfigPath'/keystore
+                # TODO: Ensure this is read with fabric/core/config.GetPath() once ready
+                KeyStore:
+
+    # Path on the file system where peer will find MSP local configurations
+    mspConfigPath: ./crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/users/Admin@org{{ org_id }}.{{ fabric_domain }}/msp
+
+    # Identifier of the local MSP
+    # ----!!!!IMPORTANT!!!-!!!IMPORTANT!!!-!!!IMPORTANT!!!!----
+    # Deployers need to change the value of the localMspId string.
+    # In particular, the name of the local MSP ID of a peer needs
+    # to match the name of one of the MSPs in each of the channel
+    # that this peer is a member of. Otherwise this peer's messages
+    # will not be identified as valid by other nodes.
+    localMspId: Org{{ org_id }}MSP
+
+###################    Chaincode section    #################################################
+
+chaincode:
+
+    # The id is used by the Chaincode stub to register the executing Chaincode
+    # ID with the Peerand is generally supplied through ENV variables
+    # the Path form of ID is provided when deploying the chaincode. The name is
+    # used for all other requests. The name is really a hashcode
+    # returned by the system in response to the deploy transaction. In
+    # development mode where user runs the chaincode, the name can be any string
+    id:
+{% if ccname == "njcb-elc" %}
+        name: elc
+{% else %}
+        name: {{ ccname | default ('fft') }}
+{% endif %}
+        version: "{{ channel_add[ccname|default('fft')].ccver }}"
+        chainID: channel{{ ccname | default ('fft') }}
+
+user:
+    alias: NOCHECK
+
+apiserver:
+    listenport: {{ channel_add[ccname|default('fft')].port }}
+    probe_order: "orderer{{api_id}}.ord{{ org_id }}.{{ fabric_domain }} 7050"
+########################     other section     #######################################################
+other:
+    mq_address:
+{% for mq_hosts in groups[rabbitmq_gname] %}
+      - "amqp://loc:loc@{{ mq_hosts }}:5672/"
+{% endfor %}
+    queue_name: "{{ queue_name }}"
+    system_queue_name: "{{ system_queue_name }}"
+    check_time: 10m

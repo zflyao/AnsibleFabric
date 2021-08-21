@@ -1,0 +1,12 @@
+# rabbitmq deploy usage
+# Use the -e input variable, eg："inventory=mq0_org1"
+---
+
+- name: rabbitmq
+  hosts: "{{ inventory |default('rabbitmq') }}"
+  gather_facts: false
+  vars_files:
+    - 1_vars/common.yml  
+  tasks:
+  - import_role:
+      name: rabbitmq

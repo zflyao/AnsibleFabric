@@ -1,0 +1,17 @@
+spring.application.name=hbcc-mancenter
+spring.application.version=1.2.2
+server.port={{ instance_vars.listen_port }}
+
+##database config
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+
+mongodb.addresses={{ mongodb_url[10:] }}
+mongodb.database={{ instance_vars.mongodb_database }}
+cache.mongo.uri={{ mongodb_url[10:] }}
+cache.mongo.database={{ instance_vars.mongodb_cache_database }}
+
+application.caPriKeyPath={{ work_dir }}/etc/cret/hoperun_ca.key
+application.caPubKey=hoperun_ca.cer
+application.caPubKeyPath={{ work_dir }}/etc/cret/hoperun_ca.cer

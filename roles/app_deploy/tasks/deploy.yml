@@ -1,0 +1,30 @@
+---
+- name: Create instance directory
+  file:
+    path: "{{ instance_dir }}"
+    state: directory
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+- include_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ docker_image_project }}"
+    image_name: "{{ docker_image_name }}"
+    image_tag: "{{ version }}"
+  when: app_type == "docker"
+
+- name: Unarchive files
+  unarchive:
+    src: summary_files/{{ app_name }}/{{ app_name }}-{{ version }}.tar.gz
+    dest: "{{ instance_dir }}"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+  when: app_type != "docker"
+
+- name: 确保 work_dir 文件属于 {{ worker_user }}
+  file:
+    path: "{{ work_dir }}"
+    state: directory
+    owner: "{{worker_user }}"
+    group: "{{ worker_group }}"
+

@@ -1,0 +1,11 @@
+---
+- name: Start container
+  command: docker-compose up -d
+  args:
+    chdir: "{{ work_dir }}"
+  tags:
+  - start
+
+- include_tasks: healthz.yml
+  tags:
+  - start

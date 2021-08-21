@@ -1,0 +1,26 @@
+version: '2'
+
+services:
+  keylist_{{ instance_name }}:
+    container_name: keylist_{{ instance_name }}
+    image: {{ harbor_domain }}/{{ docker_image_project }}/{{ docker_image_name }}:{{ version }}
+    restart: always
+    working_dir: /home/blockchain/{{ app_name }}/
+    environment:
+      - LANG=en_US.UTF-8
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config:/home/blockchain/{{ app_name }}/config
+      - ./logs:/home/blockchain/{{ app_name }}/logs
+      - ./script:/home/blockchain/{{ app_name }}/script
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+      - {{ instance_vars.listen_port }}:{{ instance_vars.listen_port }}
+    extra_hosts:
+{% for each_mongo in groups[org_name~'_mongodb'] %}
+      {{ each_mongo }}.{{ fabric_domain }}: {{ hostvars[each_mongo]['ansible_ssh_host'] }}
+{% endfor %}

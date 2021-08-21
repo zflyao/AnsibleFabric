@@ -1,0 +1,145 @@
+#!/bin/bash
+#author by hoke
+#运行脚本前，要确保jq安装，7059端口开启，fabric-base64命令全局，org{{ add_orgid }}节点证书生成
+
+CHANNEL_NAME=$1
+: ${CHANNEL_NAME:="channel{{ ccname | default ('fft') }}"}
+ORDERER_CA=$PWD/crypto-config/ordererOrganizations/{{ genesis_ord_domain }}/orderers/orderer0.{{ genesis_ord_domain }}/msp/tlscacerts/tlsca.{{ genesis_ord_domain }}-cert.pem
+CORE_PEER_TLS_ENABLED=true
+ORDERER1_ADDRESS=orderer0.{{ genesis_ord_domain }}:7050
+PEER0_ORG1_ADDRESS=peer0.{{ genesis_org_domain }}:7051
+ORDERER1_MSPPATH=$PWD/crypto-config/ordererOrganizations/{{ genesis_ord_domain }}/msp
+ORDERER1_ADMIN_MSP=$PWD/crypto-config/ordererOrganizations/{{ genesis_ord_domain }}/users/Admin@{{ genesis_ord_domain }}/msp
+ORG1_MSGCONFIGPATH=$PWD/crypto-config/peerOrganizations/{{ genesis_org_domain }}/users/Admin@{{ genesis_org_domain }}/msp
+ORG1_LOCALMSPID="Org1MSP"
+ORDERER1_LOCALMSPID="Orderer1MSP"
+ORDERER_MSPPATH=$PWD/crypto-config/ordererOrganizations/{{ join_orderer_domain}}/msp
+ORG_MSPPATH=$PWD/crypto-config/peerOrganizations/{{ join_peer_domain }}/msp
+echo $CHANNEL_NAME
+echo "org{{ add_orgid }}"
+export FABRIC_CFG_PATH=$PWD/cryptotool/sampleconfig
+PATH=$PWD/cryptotool/linux-amd64/bin:$PATH
+{% if add_orgid|int in range(15,23) %}
+###########################################peer#############################################
+if [ -d "update-config" ];then
+rm -rf update-config/*
+else
+mkdir update-config
+fi
+
+# fetch block
+CORE_PEER_LOCALMSPID=$ORG1_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$ORG1_MSGCONFIGPATH CORE_PEER_ADDRESS=$PEER0_ORG1_ADDRESS peer channel fetch config ./update-config/config_block.pb -o $ORDERER1_ADDRESS -c $CHANNEL_NAME  --tls=$CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+# decode block
+curl -X POST --data-binary @./update-config/config_block.pb http://127.0.0.1:7059/protolator/decode/common.Block > ./update-config/config_block.json
+
+# get config json
+jq .data.data[0].payload.data.config ./update-config/config_block.json > ./update-config/config.json
+
+# get base64 cert by fabric-base64 tool
+fabric-base64 -P $ORG_MSPPATH -o ./update-config/peer_cert.json
+
+# copy Org{{ add_orgid }} base Org1
+jq '. * {"channel_group":{"groups":{"Application":{"groups":{"Org{{ add_orgid }}MSP": .channel_group.groups.Application.groups.Org1MSP}}}}}' ./update-config/config.json  | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.policies.Admins.policy.value.identities[0].principal.msp_identifier = "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.policies.Readers.policy.value.identities[0].principal.msp_identifier = "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.policies.Writers.policy.value.identities[0].principal.msp_identifier = "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.admins[0]= '$(jq '.peer.admincert' ./update-config/peer_cert.json)'' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.root_certs[0]= '$(jq '.peer.cacert' ./update-config/peer_cert.json)'' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.tls_root_certs[0]= '$(jq '.peer.tlscert' ./update-config/peer_cert.json)'' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.name= "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.AnchorPeers.value.anchor_peers[0].host= "peer0.{{ join_peer_domain }}"' > ./update-config/updated_config.json
+
+# encode config
+curl -X POST --data-binary @./update-config/config.json http://127.0.0.1:7059/protolator/encode/common.Config > ./update-config/config.pb
+curl -X POST --data-binary @./update-config/updated_config.json http://127.0.0.1:7059/protolator/encode/common.Config > ./update-config/updated_config.pb
+
+# compute update
+curl -s -X POST -F channel=channel{{ ccname | default ('fft') }} -F original=@./update-config/config.pb -F updated=@./update-config/updated_config.pb http://127.0.0.1:7059/configtxlator/compute/update-from-configs > ./update-config/config_update.pb
+
+# convert to json
+curl -X POST --data-binary @./update-config/config_update.pb http://127.0.0.1:7059/protolator/decode/common.ConfigUpdate > ./update-config/config_update.json
+
+# package envelope
+echo '{"payload":{"header":{"channel_header":{"channel_id":"channel{{ ccname | default ('fft') }}", "type":2}},"data":{"config_update":'$(cat ./update-config/config_update.json)'}}}' | jq . > ./update-config/config_update_in_envelope.json
+
+# encode envelope json to pb
+curl -X POST --data-binary @./update-config/config_update_in_envelope.json http://127.0.0.1:7059/protolator/encode/common.Envelope > ./update-config/config_update_in_envelope.pb
+
+# do orderer{{ add_orgid }} update
+CORE_PEER_LOCALMSPID=$ORG1_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$ORG1_MSGCONFIGPATH CORE_PEER_ADDRESS=$PEER0_ORG1_ADDRESS peer channel update -f ./update-config/config_update_in_envelope.pb -c channel{{ ccname | default ('fft') }} -o $ORDERER1_ADDRESS --tls=$CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+{% else %}
+##########################################orderer###########################################
+if [ -d "update-config" ];then
+rm -rf update-config/*
+else
+mkdir update-config
+fi
+
+# fetch block
+CORE_PEER_LOCALMSPID=$ORG1_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$ORG1_MSGCONFIGPATH CORE_PEER_ADDRESS=$PEER0_ORG1_ADDRESS peer channel fetch config ./update-config/config_block.pb --cafile $ORDERER_CA --tls=$CORE_PEER_TLS_ENABLED -o $ORDERER1_ADDRESS -c $CHANNEL_NAME
+
+# decode block
+curl -X POST --data-binary @./update-config/config_block.pb http://127.0.0.1:7059/protolator/decode/common.Block > ./update-config/config_block.json
+
+# get config json
+jq .data.data[0].payload.data.config ./update-config/config_block.json > ./update-config/config.json
+#exit
+
+# get base64 cert by fabric-base64 tool
+fabric-base64 -O $ORDERER_MSPPATH -o ./update-config/orderer_cert.json
+
+# copy Ord{{ add_orgid }} base Ord1
+jq '. * {"channel_group":{"groups":{"Orderer":{"groups":{"OrdererOrg{{ add_orgid }}": .channel_group.groups.Orderer.groups.OrdererOrg1}}}}}'  ./update-config/config.json  | jq '.channel_group.groups.Orderer.groups.OrdererOrg{{ add_orgid }}.policies.Admins.policy.value.identities[0].principal.msp_identifier = "Orderer{{ add_orgid }}MSP"' | jq '.channel_group.groups.Orderer.groups.OrdererOrg{{ add_orgid }}.policies.Readers.policy.value.identities[0].principal.msp_identifier = "Orderer{{ add_orgid }}MSP"' | jq '.channel_group.groups.Orderer.groups.OrdererOrg{{ add_orgid }}.policies.Writers.policy.value.identities[0].principal.msp_identifier = "Orderer{{ add_orgid }}MSP"' | jq '.channel_group.groups.Orderer.groups.OrdererOrg{{ add_orgid }}.values.MSP.value.config.admins[0]= '$(jq '.orderer.admincert' ./update-config/orderer_cert.json)'' | jq '.channel_group.groups.Orderer.groups.OrdererOrg{{ add_orgid }}.values.MSP.value.config.root_certs[0]= '$(jq '.orderer.cacert' ./update-config/orderer_cert.json)'' | jq '.channel_group.groups.Orderer.groups.OrdererOrg{{ add_orgid }}.values.MSP.value.config.tls_root_certs[0]= '$(jq '.orderer.tlscert' ./update-config/orderer_cert.json)'' | jq '.channel_group.groups.Orderer.groups.OrdererOrg{{ add_orgid }}.values.MSP.value.config.name= "Orderer{{ add_orgid }}MSP"' | jq '.channel_group.values.OrdererAddresses.value.addresses[{{ add_addr.ord0_addr_value }}]= "orderer0.{{ join_orderer_domain}}:7050"'| jq  '.channel_group.values.OrdererAddresses.value.addresses[{{ add_addr.ord1_addr_value }}]= "orderer1.{{ join_orderer_domain}}:7050"'> ./update-config/updated_config.json
+#exit
+
+# encode config
+curl -X POST --data-binary @./update-config/config.json http://127.0.0.1:7059/protolator/encode/common.Config > ./update-config/config.pb
+curl -X POST --data-binary @./update-config/updated_config.json http://127.0.0.1:7059/protolator/encode/common.Config > ./update-config/updated_config.pb
+
+# compute update
+curl -s -X POST -F channel=channel{{ ccname | default ('fft') }} -F original=@./update-config/config.pb -F updated=@./update-config/updated_config.pb http://127.0.0.1:7059/configtxlator/compute/update-from-configs > ./update-config/config_update.pb
+
+# convert to json
+curl -X POST --data-binary @./update-config/config_update.pb http://127.0.0.1:7059/protolator/decode/common.ConfigUpdate > ./update-config/config_update.json
+
+# package envelope
+echo '{"payload":{"header":{"channel_header":{"channel_id":"channel{{ ccname | default ('fft') }}", "type":2}},"data":{"config_update":'$(cat ./update-config/config_update.json)'}}}' | jq . > ./update-config/config_update_in_envelope.json
+
+# encode envelope json to pb
+curl -X POST --data-binary @./update-config/config_update_in_envelope.json http://127.0.0.1:7059/protolator/encode/common.Envelope > ./update-config/config_update_in_envelope.pb
+
+# do orderer{{ add_orgid }} update
+CORE_PEER_LOCALMSPID=$ORDERER1_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$ORDERER1_ADMIN_MSP CORE_PEER_ADDRESS=$PEER0_ORG1_ADDRESS peer channel update -f ./update-config/config_update_in_envelope.pb -c channel{{ ccname | default ('fft') }} -o $ORDERER1_ADDRESS --tls=$CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+
+###########################################peer#############################################
+if [ -d "update-config" ];then
+rm -rf update-config/*
+else
+mkdir update-config
+fi
+
+# fetch block
+CORE_PEER_LOCALMSPID=$ORG1_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$ORG1_MSGCONFIGPATH CORE_PEER_ADDRESS=$PEER0_ORG1_ADDRESS peer channel fetch config ./update-config/config_block.pb -o $ORDERER1_ADDRESS -c $CHANNEL_NAME  --tls=$CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+# decode block
+curl -X POST --data-binary @./update-config/config_block.pb http://127.0.0.1:7059/protolator/decode/common.Block > ./update-config/config_block.json
+
+# get config json
+jq .data.data[0].payload.data.config ./update-config/config_block.json > ./update-config/config.json
+
+# get base64 cert by fabric-base64 tool
+fabric-base64 -P $ORG_MSPPATH -o ./update-config/peer_cert.json
+
+# copy Org{{ add_orgid }} base Org1
+jq '. * {"channel_group":{"groups":{"Application":{"groups":{"Org{{ add_orgid }}MSP": .channel_group.groups.Application.groups.Org1MSP}}}}}' ./update-config/config.json  | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.policies.Admins.policy.value.identities[0].principal.msp_identifier = "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.policies.Readers.policy.value.identities[0].principal.msp_identifier = "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.policies.Writers.policy.value.identities[0].principal.msp_identifier = "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.admins[0]= '$(jq '.peer.admincert' ./update-config/peer_cert.json)'' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.root_certs[0]= '$(jq '.peer.cacert' ./update-config/peer_cert.json)'' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.tls_root_certs[0]= '$(jq '.peer.tlscert' ./update-config/peer_cert.json)'' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.MSP.value.config.name= "Org{{ add_orgid }}MSP"' | jq '.channel_group.groups.Application.groups.Org{{ add_orgid }}MSP.values.AnchorPeers.value.anchor_peers[0].host= "peer0.{{ join_peer_domain }}"' > ./update-config/updated_config.json
+
+# encode config
+curl -X POST --data-binary @./update-config/config.json http://127.0.0.1:7059/protolator/encode/common.Config > ./update-config/config.pb
+curl -X POST --data-binary @./update-config/updated_config.json http://127.0.0.1:7059/protolator/encode/common.Config > ./update-config/updated_config.pb
+
+# compute update
+curl -s -X POST -F channel=channel{{ ccname | default ('fft') }} -F original=@./update-config/config.pb -F updated=@./update-config/updated_config.pb http://127.0.0.1:7059/configtxlator/compute/update-from-configs > ./update-config/config_update.pb
+
+# convert to json
+curl -X POST --data-binary @./update-config/config_update.pb http://127.0.0.1:7059/protolator/decode/common.ConfigUpdate > ./update-config/config_update.json
+
+# package envelope
+echo '{"payload":{"header":{"channel_header":{"channel_id":"channel{{ ccname | default ('fft') }}", "type":2}},"data":{"config_update":'$(cat ./update-config/config_update.json)'}}}' | jq . > ./update-config/config_update_in_envelope.json
+
+# encode envelope json to pb
+curl -X POST --data-binary @./update-config/config_update_in_envelope.json http://127.0.0.1:7059/protolator/encode/common.Envelope > ./update-config/config_update_in_envelope.pb
+
+# do orderer{{ add_orgid }} update
+CORE_PEER_LOCALMSPID=$ORG1_LOCALMSPID CORE_PEER_MSPCONFIGPATH=$ORG1_MSGCONFIGPATH CORE_PEER_ADDRESS=$PEER0_ORG1_ADDRESS peer channel update -f ./update-config/config_update_in_envelope.pb -c channel{{ ccname | default ('fft') }} -o $ORDERER1_ADDRESS --tls=$CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+{% endif %}

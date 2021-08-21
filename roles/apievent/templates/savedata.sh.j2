@@ -1,0 +1,17 @@
+#!/bin/bash
+# author by hoke
+# this script is fabric savedata test
+
+clear
+echo -e "---------- 开始\033[41;37m $1 \033[0m次saveData接口测试 ----------"
+sleep 1
+for((i=1;i<=$1;i++));  
+do
+	echo ""
+	echo "---------- channel{{ ccname |default('fft') }} ----------"
+{% if ccname == "ctfu" %}
+	curl -i -X POST -H "Authorization:Basic cGVlcmZpbnRlY2g6Y3RmdQ==" http://127.0.0.1:5555/trade/savedata -d "[{}]"
+{% else %}	
+	curl -H  "Content-Type: application/json" -X POST  --data '[ {"createBy":"chain","createTime":1500612707,"sender":"chain","receiver":["ALL"],"txData":"test1234","lastUpdateTime":0,"lastUpdateBy":"","cryptoFlag":0,"cryptoAlgorithm":"","docType":"","fabricTxId":"","businessNo":"'$i'" ,"expand1":"test_expand21","expand2":"test_expand22"}]' http://127.0.0.1:{{ channel_add[ccname|default('fft')].port }}/factor/saveData
+{% endif %}
+done

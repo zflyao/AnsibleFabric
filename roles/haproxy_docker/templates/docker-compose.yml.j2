@@ -1,0 +1,40 @@
+version: '2'
+services:
+
+  haproxy:
+    image: {{ harbor }}/qklmiddleware/runchain/haproxy:1.8
+    ports:
+      - 1080:1080
+{% if kafka is defined %}
+      - 9001:9001
+      - 9002:9002
+      - 9003:9003
+      - 9004:9004
+{% endif %}
+{% if orderer is defined %}
+      - 7001:7001
+      - 7002:7002
+{% endif %}
+{% if orderer is defined %}
+{% if app is defined %}
+{% for app_list in app|sort %}
+      - {{ app[app_list].port }}:{{ app[app_list].port }}
+{% endfor %}
+{% endif %}
+{% if ccname is defined %}
+{% for channel_list in ccname %}
+      - {{ channel_add[channel_list].port }}:{{ channel_add[channel_list].port }}
+{% endfor %}
+{% endif %}
+    hostname: haproxy
+    container_name: haproxy
+#    user: root
+    restart: unless-stopped
+    volumes:
+      - ./haproxyconf:/usr/local/etc/haproxy
+      
+# Help
+## Reloading config
+### $ docker kill -s HUP my-running-haproxy
+## Test the configuration file
+### $ docker run -it --rm --name haproxy-syntax-check my-haproxy haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg

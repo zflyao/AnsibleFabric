@@ -1,0 +1,4 @@
+mongodb_home: "{{ worker_home }}/{{ inventory_name | split('.')[0] }}"
+mongodb_root_user: root
+mongodb_root_pass: Root@123
+

@@ -1,0 +1,8 @@
+- name: 检查 Supervisor 是否已启动
+  command: ps -C supervisord
+  register: ps
+  ignore_errors: true
+
+- name: 如尚未启动，则启动 Supervisor
+  command: supervisord -c {{ worker_home }}/supervisor/supervisord.conf
+  when: ps.rc != 0

@@ -1,0 +1,9 @@
+# deploy JDK
+# Use the -e input variable, eg：inventory=org1_java
+---
+
+- name: deploy JDK
+  hosts: "{{ inventory | default('*_unique') }}"
+  gather_facts: false
+  roles:
+    - role: jdk

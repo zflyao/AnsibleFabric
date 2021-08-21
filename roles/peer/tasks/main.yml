@@ -1,0 +1,5 @@
+---
+- import_tasks: "{{ operation }}.yml"
+
+# - debug:
+#     msg: "{{ inventory_hostname | regex_replace('(.*\\d+).(.*\\d+)$','\\1_\\2') }}"

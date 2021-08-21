@@ -1,0 +1,142 @@
+---
+
+- name: 创建工作目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - "{{ ccname_home }}/{{ ccname  }}api"
+    - "{{ ccname_home }}/{{ ccname  }}event"
+    - "{{ fabric_home }}/bin"
+    - "{{ fabric_home }}/images"
+    - "{{ fabric_home }}/crypto-config/ordererOrganizations"
+    - "{{ fabric_home }}/crypto-config/peerOrganizations"
+
+- name: pull 镜像
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/{{ item }}:latest
+  with_items:
+    - apiserver
+    - eventserver
+
+- name: 上传 fabric 证书
+  copy:
+    src: "{{ playbook_dir }}/{{ env_src }}/crypto-config/{{ item.src }}"
+    dest: "{{ fabric_home }}/crypto-config/{{ item.dest }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - { src: 'ordererOrganizations/ord{{org_id}}.{{ fabric_domain }}' , dest: 'ordererOrganizations' }
+    - { src: 'peerOrganizations/org{{org_id}}.{{ fabric_domain }}' , dest: 'peerOrganizations' }
+
+- name: 生成 current.info
+  copy:
+    dest: "{{ ccname_home }}/{{ ccname  }}event/current.info"
+    content: '{"blocknumber":0,"txindex":0}'
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+    mode: 0644
+
+- name: 上传event配置模板
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ ccname_home }}/{{ ccname  }}event/{{ item.dest }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+  with_items:
+    - { src: 'ctfu-api_client_sdk_v1.1.j2' , dest: 'client_sdk.yaml' }
+    - { src: 'ctfu-event_v1.1.j2' , dest: 'docker-compose.yml' }
+
+- name: 上传api配置模板
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ ccname_home }}/{{ ccname  }}api/{{ item.dest }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+  with_items:
+    - { src: 'ctfu-event_client_sdk_v1.1.j2' , dest: 'client_sdk.yaml' }
+    - { src: 'ctfu-api_v1.1.j2' , dest: 'docker-compose.yml' }
+
+- name: 启动 docker 容器
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: /usr/local/bin/docker-compose -f {{ ccname_home }}/{{ ccname  }}{{ item }}/docker-compose.yml up -d
+  with_items:
+    - api
+    - event
+  tags:
+    - rebuild
+
+- name: 等待10秒
+  wait_for:
+    timeout: 10
+  tags: rebuild
+
+- name: 检查容器启动是否正常
+  shell: docker ps -a -f name={{ ccname  }}
+  register: docker_status
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ docker_status.stdout_lines }}"
+  tags:
+    - rebuild
+
+- name: 检查 API 容器的id
+  shell: docker ps -aq -f name=apiserver_{{ ccname  }}
+  register: api_containers
+  tags:
+    - rebuild
+#- debug:
+#    msg: "{{ api_containers.stdout_lines }}"
+
+- name: 获得完整的 API 容器的id
+  shell: ls /var/lib/docker/containers/ | grep {{ api_containers.stdout }}
+  register: api_containers_nu
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ api_containers_nu.stdout }}"
+  tags:
+    - rebuild
+
+- name: 等待 API port 监听
+  wait_for:
+    port: "{{ api_port }}"
+    delay: 10
+  tags:
+    - rebuild
+
+- name: 检查 API 启动是否正常
+  shell: "grep 'CRIT : Actual pid is' /var/lib/docker/containers/{{ api_containers_nu.stdout }}/{{ api_containers_nu.stdout }}-json.log"
+  register: api_status
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ api_status.stdout_lines }}"
+  tags:
+    - rebuild
+
+- name: 底层探活
+  shell: curl --head -H "Authorization:Basic cGVlcmZpbnRlY2g6Y3RmdQ==" http://127.0.0.1:{{ api_port }}/trade/keepalive
+  register: fabric_status
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ fabric_status.stdout_lines }}"
+  tags:
+    - rebuild
+
+- name: 底层探活验证脚本
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ fabric_home }}/bin/{{ ccname }}-{{ item }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+  with_items:
+    - live.sh
+    - savedata.sh

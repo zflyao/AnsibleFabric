@@ -1,0 +1,9 @@
+# haproxy deploy usage
+# Use the -e input variable, eg："inventory=haproxy.org1"
+---
+
+- name: haproxy
+  hosts: "{{ inventory | default('*_haproxy') }}"
+  gather_facts: false
+  roles:
+    - role: haproxy

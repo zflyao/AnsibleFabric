@@ -1,0 +1,8 @@
+---
+
+rabbitmq_home: "{{ worker_home }}/{{ inventory_hostname }}"
+erlang_cookie: ALWEDHDBZTQYWTJGTXWV
+rabbitmq_user: loc
+rabbitmq_pass: loc
+
+rabbit_count: "{{ groups[group_names.0] | length }}"

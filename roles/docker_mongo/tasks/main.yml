@@ -1,0 +1,41 @@
+---
+
+- name: setting fact value
+  set_fact:
+    Mongo_Count: "{{ groups['mongo'] | length }}"
+  tags: always
+
+- name: 创建mongodb目录
+  file:
+    path: "{{ work_home }}/mongodb"
+    owner: "{{ work_user}}"
+    group: "{{ work_group }}"
+    state: directory
+
+- name: pull 镜像
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: docker pull {{ harbor }}/qklmiddleware/runchain/mongodb
+  when: harbor is defined
+
+- name: 拷贝mongodb镜像
+  copy: src=mongodb.tar dest={{ work_home }}/mongodb owner={{ work_user}} group={{ work_group }}
+  when: harbor is not defined
+
+- name: laod mongodb镜像
+  command: docker load -i {{ work_home }}/mongodb/mongodb.tar
+  when: harbor is not defined
+
+- name: 拷贝docker-compose文件
+  template: src=docker-compose.yml dest={{ work_home }}/mongodb owner={{ work_user}} group={{ work_group }}
+
+- name: 启动容器
+  command: docker-compose -f {{ work_home }}/mongodb/docker-compose.yml up -d
+
+- name: 拷贝脚本
+  unarchive: src=shell.tgz dest={{ work_home }}/mongodb owner={{ work_user}} group={{ work_group }}
+
+- name: 执行集群脚本
+  script: /usr/bin/bash {{ work_home }}/mongodb/shell/initSet_join.sh chdir={{ work_home }}/mongodb/shell
+  become: true
+  become_user: blockchain

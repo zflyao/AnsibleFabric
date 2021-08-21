@@ -1,0 +1,43 @@
+# 可传入参数：channel
+
+- name: 生成 configtx.yaml 配置文件
+  template:
+    src: "generate/configtx_{{fabric_deploy_ver}}.yaml.j2"
+    dest: "{{ cli_home }}/tools/configtx.yaml"
+    backup: yes
+    mode: 0600
+  tags: always
+
+- name: 上传生成脚本
+  copy:
+    src: generate_artifacts.sh
+    dest: "{{ cli_home }}/tools"
+    mode: 0755
+  tags: always
+
+- name: 重启 cli 容器
+  command: docker-compose up -d --force
+  args:
+    chdir: "{{ cli_home }}"
+  tags: always
+
+- import_tasks: generate_genesis_block.yml
+  tags: genesis
+
+- include_tasks: generate_channel_tx.yml
+  vars:
+    channel_name: "{{ channelitem.key }}"
+  loop: "{{ fabric_channels | dict2items }}"
+  loop_control:
+    loop_var: channelitem
+  tags: channel
+  # when: channelitem.value.orgs.0 == org
+
+- include_tasks: generate_anchor_tx.yml
+  vars:
+    channel_name: "{{ channelitem.key }}"
+  loop: "{{ fabric_channels | dict2items }}"
+  loop_control:
+    loop_var: channelitem
+  tags: anchor
+  # when: channelitem.value.orgs.0 == org

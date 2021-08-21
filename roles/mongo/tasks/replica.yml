@@ -1,0 +1,146 @@
+---
+
+- name: hosts 绑定域名
+  lineinfile:
+    path: /etc/hosts
+    line: "{{ hostvars[item+'.org'+org_id].ansible_ssh_host }} mongo{{ mongo_index +1 }}.org{{ org_id }}.{{ fabric_domain }}"
+  loop:
+  - mongoP
+  - mongoS
+  - mongoA
+  loop_control:
+    index_var: mongo_index
+
+- name: 检查 mongodb keyfile
+  stat:
+    path: "{{ worker_home }}/mongodb/auth/mongodb-keyfile"
+  register: auth_keyfile
+- debug:
+    msg: "********* auth_keyfile is exits **********"
+  when: auth_keyfile.stat.exists
+
+- name: 创建 mongodb 认证目录
+  file:
+    path: "{{ worker_home }}/mongodb/auth"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+    state: directory
+  when: not auth_keyfile.stat.exists
+
+- name: 创建 keyFile
+  copy:
+    dest: "{{ worker_home }}/mongodb/auth/mongodb-keyfile"
+    content: "{{ mongodb_keyfile_content }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+    mode: 0400
+  when: not auth_keyfile.stat.exists
+
+- name: 拷贝 replica 配置文件
+  template:
+    src: replica.conf.j2
+    dest: "{{ worker_home }}/mongodb/conf/replica.conf"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+
+- name: get pid of mongodb
+  shell: pidof mongod
+  register: pidof_mongod
+  ignore_errors: yes
+
+- name: 启动 mongodb replica 集群
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongod -f {{worker_home}}/mongodb/conf/replica.conf"
+  args:
+    chdir: "{{worker_home}}/mongodb/bin"
+  ignore_errors: yes
+  register: mongo_start
+  when: pidof_mongod.rc == 1
+- debug:
+    msg: "{{ mongo_start.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 等待 MongoDB port 监听
+  wait_for:
+    port: "{{ mongodb_replica_port | default ('27010') }}"
+    delay: 5
+
+- name: 检查 replica 设置状态
+  shell: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_replica_port | default ('27010') }} --quiet --eval 'rs.status().ok'"
+  register: replica_rs_ok
+  ignore_errors: yes
+- debug:
+    msg: "{{ replica_rs_ok.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 在mongodb-p上拷贝 replica 初始化脚本
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ worker_home }}/mongodb/conf/{{ item }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+  with_items:
+    - replicaconf.js
+    - creat_admin.js
+    - creat_user.js
+  when: "'mongoP' in inventory_hostname and replica_rs_ok.stdout == '0'"
+
+- name: 在mongodb-p上初始化 replica 集群
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_replica_port | default ('27010') }} --quiet {{ worker_home }}/mongodb/conf/replicaconf.js"
+  ignore_errors: yes
+  when: "'mongoP' in inventory_hostname and replica_rs_ok.stdout == '0'"
+
+- pause:
+    seconds: 20
+    prompt: "等待初始化20秒，请勿手动操作！"
+
+- name: 在mongodb-p上创建 admin 用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_single_port | default ('27010') }} admin --quiet {{ worker_home }}/mongodb/conf/creat_admin.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_admin
+  ignore_errors: yes
+  when: "'mongoP' in inventory_hostname"
+- debug:
+    msg: "{{ add_mongo_admin.stdout_lines }}"
+  ignore_errors: yes
+  when: "'mongoP' in inventory_hostname"
+
+- name: 在mongodb-p上创建普通用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_single_port | default ('27010') }} mongo --quiet {{ worker_home }}/mongodb/conf/creat_user.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_user
+  ignore_errors: yes
+  when: "'mongoP' in inventory_hostname"
+
+- debug:
+    msg: "{{ add_mongo_user.stdout_lines }}"
+  ignore_errors: yes
+  when: "'mongoP' in inventory_hostname"
+
+- name: 等待 mongo-sharding port 监听
+  wait_for:
+    port: "{{ mongodb_single_port | default ('27010') }}"
+    delay: 15
+
+- name: 检查 replica 成员设置
+  shell: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_replica_port | default ('27010') }} --username {{ mongodb_root_name }} --password {{ mongodb_root_passwd }} --authenticationDatabase admin --quiet --eval 'rs.status().members'"
+  register: replica_rs_members
+  ignore_errors: yes
+  when: "'mongoP' in inventory_hostname or 'mongoS' in inventory_hostname"
+- debug:
+    msg: "{{ replica_rs_members.stdout_lines }}"
+  ignore_errors: yes
+  when: "'mongoP' in inventory_hostname or 'mongoS' in inventory_hostname"
+
+- name: 检查回显
+  wait_for:
+    timeout: 5

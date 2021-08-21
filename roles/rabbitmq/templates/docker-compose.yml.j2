@@ -1,0 +1,27 @@
+version: '3'
+
+services:
+  {{ inventory_hostname }}:
+    container_name: {{ inventory_hostname }}
+    image: {{ harbor_domain }}/midware/rabbitmq:3.8_management_20191106
+    restart: always
+    hostname: {{ inventory_hostname }}
+    ports:
+      - "5672:5672"
+      - "4369:4369"
+      - "1883:1883"
+      - "15672:15672"
+      - "25672:25672"
+    environment:
+      - RABBITMQ_DEFAULT_USER={{ rabbitmq_user }}
+      - RABBITMQ_DEFAULT_PASS={{ rabbitmq_pass }}
+      - RABBITMQ_ERLANG_COOKIE='{{ erlang_cookie }}' 
+      - RABBITMQ_NODENAME=rabbit@{{ inventory_hostname }}
+    volumes: 
+      - ./mount:/var/lib/rabbitmq
+{% if rabbit_count|int > 1 %}
+    extra_hosts:
+{% for mq in groups[group_names.0] %}
+      {{mq}}: {{ hostvars[mq].ansible_ssh_host }}
+{% endfor %}      
+{% endif %}

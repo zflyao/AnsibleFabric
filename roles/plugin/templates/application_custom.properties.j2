@@ -1,0 +1,21 @@
+#version
+spring.application.name=plugins
+spring.application.version=1.0.0
+#urlProperties
+urlProperties.authenticateUrl=http://{{ intranal_lb2 }}:5050/api/authenticate
+urlProperties.updateFTStatusUrl=http://{{ intranal_lb2 }}:9090/api/forfaiting/review
+urlProperties.updateLCAppStatusUrl=http://{{ intranal_lb2 }}:5050/api/creditLetter/review
+urlProperties.updateLCMoappStatusUrl=http://{{ intranal_lb2 }}:5050/api/modifyBook/review
+
+urlProperties.pushApplicationUrl=http://{{ pushccb_ip }}:{{ pushccb_port }}/nbcs/restful/BCDP001/send
+urlProperties.pushModifyApplicationUrl=http://{{ pushccb_ip }}:{{ pushccb_port }}/nbcs/restful/BCDP002/modify
+
+urlProperties.tokenFileUrl={{ plugin_dir }}/config/token.properties
+
+urlProperties.certificateKeyUrl={{ plugin_dir }}/config/zh_1.key
+urlProperties.userName=ccb_sss
+urlProperties.password=123456aA
+
+urlProperties.machineNo={{ machineNo }}
+#log
+logging.config={{ plugin_dir }}/config/logback-spring.xml

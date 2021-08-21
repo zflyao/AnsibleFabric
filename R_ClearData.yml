@@ -1,0 +1,58 @@
+---
+# 停止所有 Fabric 组件
+- hosts: "{{ org | default('*') }}_peer"
+  vars:
+    operation: stop
+  tasks:
+  - import_role:
+      name: peer
+
+- hosts: "{{ ord | default('*') }}_orderer"
+  vars:
+    operation: stop
+  tasks:
+  - import_role:
+      name: orderer
+
+- hosts: kafka
+  vars:
+    operation: stop
+  tasks:
+  - import_role:
+      name: kafka
+
+- hosts: zookeeper
+  vars:
+    operation: stop
+  tasks:
+  - import_role:
+      name: zookeeper
+
+# 清除所有组件数据
+- hosts: "{{ org | default('*') }}_peer"
+  vars:
+    operation: clear
+  tasks:
+  - import_role:
+      name: peer
+
+- hosts: "{{ ord | default('*') }}_orderer"
+  vars:
+    operation: clear
+  tasks:
+  - import_role:
+      name: orderer
+
+- hosts: kafka
+  vars:
+    operation: clear
+  tasks:
+  - import_role:
+      name: kafka
+
+- hosts: zookeeper
+  vars:
+    operation: clear
+  tasks:
+  - import_role:
+      name: zookeeper

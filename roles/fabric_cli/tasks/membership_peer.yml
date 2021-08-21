@@ -1,0 +1,42 @@
+# adminpeer: 待加入通道的管理组织的节点
+---
+- name: 创建 Peer MSP 目录
+  file:
+    path: "{{ cli_home }}/tools/crypto-config/peerOrganizations/"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+
+- name: 将入盟组织的 Peer MSP 目录同步到管理组织的 peer0 机器
+  synchronize: 
+    src: "{{ env_src }}/crypto-config/peerOrganizations/{{ peer_domain }}"
+    dest: "{{ cli_home }}/tools/crypto-config/peerOrganizations/"
+    private_key: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+    delete: yes
+
+- name: 创建 {{ addorg }}-artifacts 目录
+  file:
+    path: "{{ cli_home }}/tools/{{ addorg }}-artifacts"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 上传 {{ addorg }} 的 configtx.yaml
+  template:
+    src: membership/add_peer_configtx.yaml.j2
+    dest: "{{ cli_home }}/tools/{{ addorg }}-artifacts/configtx.yaml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: 上传 add_peer.sh
+  template:
+    src: "membership/add_peer.sh.j2"
+    dest: "{{ cli_home }}/tools/{{ addorg }}-artifacts/add_peer.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+
+- name: 执行 add_peer.sh
+  shell: docker exec cli-{{ inventory_hostname }} /home/{{ addorg }}-artifacts/add_peer.sh {{ channel }}

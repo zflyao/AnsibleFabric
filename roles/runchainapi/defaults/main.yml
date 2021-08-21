@@ -1,0 +1,27 @@
+---
+
+harbor: true
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+api_home: "{{ worker_home }}/{{ inventory_hostname }}"
+ccname_home: "{{ api_home }}/{{ ccname }}"
+org_id: "{{ group_names|join()|regex_search('(\\d+)(?!.*\\d)') }}"
+api_id: "{{ inventory_hostname | regex_search('\\d+') }}"
+env_src: "{{inventory_file | basename}}"
+orderer_inventory: "orderer{{ cli_id }}.ord{{ ord_id }}"
+
+fabric_domain: finblockchain.cn
+ord_id: "{{org_id}}"
+
+peer_gname: "org{{ org_id }}_peer"
+orderer_gname: "{{ ord_name }}_orderer"
+rabbitmq_gname: "org{{ org_id }}_rabbitmq"
+api_port: "{{ standard_cc[ccname].api_port }}"
+ccver: "{{ standard_cc[ccname].version }}"
+
+queue_name: "{{ ccname }}Queue_msp{{ org_id }}"
+
+chaincodeledgerversion: "{{ standard_cc[ccname].ledgerversion }}"
+
+tag: RELEASE_20190912111801

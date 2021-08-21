@@ -1,0 +1,231 @@
+#debug: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        exclude: '*'
+server.port: {{ instance_vars.listen_port }}
+
+hoperun.platform:
+  base:
+    platformPriKeyFile: /home/blockchain/{{ app_name }}/config/rsa_pri_0.pem
+    platformPubKeyFile: /home/blockchain/{{ app_name }}/config/rsa_pub_0.pem
+    apiserver.host: http://{{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}:{{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}/assetTradingPlatform
+    assetTypes:
+    -
+      name: /asset/information/contract
+      version: v1.0.0
+      transactionTypes:
+      -
+        type: Create
+        name: CreateAsset
+        version: 1.1
+      -
+        type: Authorize
+        name: AuthorizeAsset
+        version: 1.1
+      -
+        type: Transfer
+        name: TransferAsset
+        version: 1.1
+    transactionTypes:
+    -
+      type: Transfer
+      name: TransferAsset
+      version: 1.1
+
+  local:
+    store:
+      localTableName: localCacheTable
+
+
+platform:
+  component:
+    apidoc.enable-swagger2: true
+    statemachine:
+      umlFilePath1: /home/blockchain/{{ app_name }}/config/org_register.uml
+      umlFilePath2: /home/blockchain/{{ app_name }}/config/user_register.uml
+      enable: true
+    client.platformRuntimeServer: http://localhost:{{ instance_vars.listen_port }}
+  service:
+    runtime:
+      platformInformation:
+        currentId: {{ instance_vars.platform_id }}
+        hostInfoList:
+{% for each_p in platform[instance_vars.project] %}
+        -
+          id: {{ each_p.id }}
+          name: {{ each_p.id }}
+          description: {{ each_p.description }}
+          apiToken: eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJhcHBJZDEiLCJBUElfVE9LRU5fS0VZX0FQUF9TRUNSRVQiOiJhcHBTZWNyZXQxIiwiQVBJX0FVVEgiOiJBUElfQ0FMTEVSIiwiQVBJX1RPS0VOX0tFWV9BUFBfTkFNRSI6ImFwcE5hbWUxIiwiQVBJX1RPS0VOX0tFWV9BUFBfSUQiOiJhcHBJZDEiLCJleHAiOjE4NjYxODAzNzZ9.3PVONzbJdMKUaJbstIa05rq9LdqC9_V9CwS0NI4gfDTQqb7JcYMoqGi8hmKKVewqE-5tMLFXMGS4DNuE-LwoUA
+          entryPoint:
+            scheme: {{ each_p.scheme }}
+            host: {{ each_p.host }}
+            port: {{ each_p.port }}
+            path: /
+{% endfor %}
+      ecosphereInformation:
+        currentId: eid001
+        hostInfoList:
+        -
+          id: eid001
+          name: DefaultEcosphereApp
+          description: Default Ecosphere App
+          apiToken: failedapitoken
+          version: 1.0.0-SNAPSHOT
+          entryPoint:
+            scheme: http
+            host: 127.0.0.1
+            port: 8080
+            path: /
+    common-dictionary:
+      enable: true
+    file-storage-service:
+      enable: true
+      fsBucketsName: security_bucket
+    certificate-service:
+      enable: true
+      rootCAPubKeyName: hoperun_ca.cer
+      rootCAPriKeyName: hoperun_ca.key
+      verifyIssuer: {{ instance_vars.verify_issuer }}
+    safebox-service:
+      enable: true
+      version: 1.0
+    session-service:
+      enable: true
+      sessionTimeoutMinutes: 30
+      loginFailLockTimeMin: 30
+      loginRetryMaxErrorTimes: 3
+      maxSessionConcurrency: 1
+    addressbook-service:
+      enable: true
+    organization-service:
+      enable: true
+    organization-registration-service:
+      enable: true
+      verifyOrgCert: false
+      verifyUserCert: false
+    user-service:
+      enable: true
+    verification-code:
+      enable: true
+      expireTimeSeconds: 60
+
+  security:
+    enable: true
+    enable-stateful: false
+    enable-stateless: true
+    authentication:
+      jwt:
+        secret: my-secret-token-to-change-in-production
+        tokenValidityInSeconds: 86400
+    ignored-resources:
+    -
+      key: "/api/**"
+      value: "*"
+    #            -
+    #                key: "/app/**/*.{js,html}"
+    #                value: "*"
+    -
+      key: "/i18n/**"
+      value: "*"
+    -
+      key: "/**"
+      value: "OPTIONS"
+    -
+      key: "/bower_components/**"
+      value: "*"
+    -
+      key: "/content/**"
+      value: "*"
+    -
+      key: "/swagger-ui.html"
+      value: "*"
+    -
+      key: "/swagger-resources/**"
+      value: "*"
+    -
+      key: "/webjars/**"
+      value: "*"
+    -
+      key: "/v2/api-docs/**"
+      value: "*"
+    -
+      key: "/csrf"
+      value: "*"
+    authorizes:
+    -
+      uri: /test/hello
+      authorizevia: authenticated
+    -
+      uri: /test/permitAll
+      authorizevia: permitAll
+    -
+      uri: /api/verificationcode/**
+      authorizevia: permitAll
+    -
+      uri: /test/role
+      authorizevia: hasAnyAuthority
+      authorizeAttributes: ROLE_ADMIN
+    rememberMe:
+      key: remember-me
+
+spring:
+  cache:
+    mongo:
+      caches:
+      -
+        cacheName: mongocache
+        collectionName: cacheCollection1
+        flushOnBoot: true
+        ttl: 3600
+  data:
+    mongodb:
+      uri: '{{ mongodb_url }}/{{ instance_vars.mongodb_database }}'
+      database: {{ instance_vars.mongodb_database }}
+    mongo.repositories.enable: true
+  cloud:
+    bus.enabled: false
+    bootstrap.enabled: false
+    discovery.enabled: false
+    consul.enabled: false
+    consul.config.enabled: false
+    config.discovery.enabled: false
+  profiles:
+    active: 'dev,swagger'
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    url: '{{ pg_url }}/{{ instance_vars.pg_database }}'
+    username: {{ pg_user }}
+    password: {{ pg_pass }}
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 30MB
+      max-request-size: 50MB
+      resolve-lazily: false
+
+#mc.plugin.config.rootPath: X:/Public/222/client/plugins/plugin-config/plugin-config
+
+hoperun.plugins:
+  #  security.certificate:
+  #    certificateTableName: security_bucket
+  #    rootCAPubKeyName: hoperun_ca.cer
+  #    rootCAPriKeyName: hoperun_ca.key
+  #    rootCAPriKeyFilePath: X:/Public/222/client/keys/hoperun_ca.key
+
+  amqp:
+    #fanoutQueueName: blockchain.apiserver.event.org1
+    #fanoutExchangeName: blockchain.apiserver1
+    fanoutQueueName: {{ instance_vars.rabbitmq_queue }}
+    fanoutExchangeName: {{ instance_vars.rabbitmq_exchange }}
+    isStartEventReceiver: false
+
+spring.rabbitmq.addresses: {{ rabbitmq_address }}
+spring.rabbitmq.username: {{ rabbitmq_user }}
+spring.rabbitmq.password: {{ rabbitmq_pass }}
+spring.rabbitmq.listener.direct.retry.enabled: true
+spring.rabbitmq.listener.simple.retry.enabled: true
+spring.jackson.property-naming-strategy: SNAKE_CASE
+server.tomcat.basedir: /home/{{ worker_user }}/{{ app_name }}/tmp

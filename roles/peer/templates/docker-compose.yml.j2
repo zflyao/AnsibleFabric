@@ -1,0 +1,90 @@
+version: '2'
+
+services:
+  {{ inventory_hostname_short }}.{{ peer_domain }}:
+    image: {{ harbor_domain }}/{{ fabric_harbor_project }}/fabric-peer:{{ fabric_deploy_ver }}
+    restart: always
+    container_name: {{ inventory_hostname }}
+    environment:
+      # 阿里云所需参数
+      - GODEBUG=netdns=go
+      #--------------------
+      # base env
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE={{ peer_dictory }}_default
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_ENDORSER_ENABLED=true
+      - CORE_PEER_GOSSIP_USELEADERELECTION=false
+      - CORE_PEER_GOSSIP_ORGLEADER=true
+      - CORE_PEER_PROFILE_ENABLED=false
+      - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
+      - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+      - CORE_PEER_GOSSIP_RECONNECTMAXPERIOD=300
+      - CORE_PEER_GOSSIP_RECONNECTMINPERIOD=5
+      - CORE_PEER_GOSSIP_RECONNECTMINPERIODATTEMPTTIME=10
+      # improve env
+      - CORE_PEER_ID={{ inventory_hostname }}
+      - CORE_PEER_ADDRESS={{ inventory_hostname_short }}.{{ peer_domain }}:7051
+      - CORE_PEER_CHAINCODELISTENADDRESS={{ inventory_hostname_short }}.{{ peer_domain }}:7052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT={{ inventory_hostname_short }}.{{ peer_domain }}:7051
+      - CORE_PEER_LOCALMSPID={{ org_mspid }}
+{% if fabric_minor_ver | int == 4 %}
+      # For runchain/ccenv
+      - CORE_CHAINCODE_BUILDER={{ harbor_domain }}/{{ cc_harbor_project }}/fabric-nodeenv:{{ cc_nodeevn_tag }}
+      - CORE_CHAINCODE_NODE_RUNTIME={{ harbor_domain }}/{{ cc_harbor_project }}/fabric-nodeenv:{{ cc_nodeevn_tag }}
+      - CORE_CHAINCODE_GOLANG_RUNTIME={{ harbor_domain }}/{{ cc_harbor_project }}/fabric-nodeenv:{{ cc_nodeevn_tag }}
+      #- FABRIC_LOGGING_SPEC=DEBUG
+      # Enable operations server
+      - CORE_OPERATIONS_LISTENADDRESS=0.0.0.0:9443
+{% else %}
+      # peer区块缓存大小
+      # 防止peer和event之间丢数
+      - CORE_PEER_EVENTS_BUFFERSIZE=1000
+      - CORE_PEER_EVENTS_TIMEOUT=0
+      - CORE_PEER_GOSSIP_DEFMAXBLOCKDISTANCD=200
+      - CORE_PEER_GOSSIP_DEFAULTORDERERADDRESS={{ default_orderer_server }}:{{ default_orderer_port }}
+      - CORE_LOGGING_LEVEL=DEBUG
+{% endif %}
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: peer node start
+    volumes:
+      - /var/run/:/host/var/run/
+      - {{ worker_home }}/crypto-config/peerOrganizations/{{ peer_domain }}/peers/{{ inventory_hostname_short }}.{{ peer_domain }}/msp:/etc/hyperledger/fabric/msp
+      - {{ worker_home }}/crypto-config/peerOrganizations/{{ peer_domain }}/peers/{{ inventory_hostname_short }}.{{ peer_domain }}/tls:/etc/hyperledger/fabric/tls
+      - {{ worker_home }}/crypto-config/peerOrganizations/{{ peer_domain }}/crypto:/etc/hyperledger/fabric/crypto
+      - /etc/localtime:/etc/localtime
+      - {{ fabric_data }}:/var/hyperledger/production
+    logging:
+      driver: "json-file"
+      options: 
+        max-size: "50m"
+        max-file: "10"
+    ports:
+      - 7051:7051
+      - 7052:7052
+{% if fabric_minor_ver | int == 4 %}
+      - 9443:9443
+{% else %}
+      - 7053:7053
+{% endif %}
+    extra_hosts:
+{% if not own_orderer %}
+{% for each_o in groups[ord_name~'_orderer'] %}
+      {{ hostvars[each_o]['inventory_hostname_short'] }}.{{ orderer_domain }}: {{ hostvars[each_o][slb] | default(hostvars[each_o]['ansible_ssh_host'], true) }}
+{% endfor %}
+{% elif own_orderer and ord_name not in fabric_genesis_orgs.ords %}
+{% for each_o in groups[ord_name~'_orderer'] %}
+      {{ hostvars[each_o]['inventory_hostname_short'] }}.{{ orderer_domain }}: {{ hostvars[each_o]['ansible_ssh_host'] }}
+{% endfor %}
+{% for each_genesis_o in groups[fabric_genesis_orgs.ords[0]~'_orderer'] %}
+      {{ hostvars[each_genesis_o]['inventory_hostname_short'] }}.{{ hostvars[each_genesis_o]['orderer_domain'] }}: {{ hostvars[each_genesis_o][slb] | default(hostvars[each_genesis_o]['ansible_ssh_host'], true) }}
+{% endfor %}
+{% else %}
+{% for each_o in groups[ord_name~'_orderer'] %}
+      {{ hostvars[each_o]['inventory_hostname_short'] }}.{{ orderer_domain }}: {{ hostvars[each_o]['ansible_ssh_host'] }}
+{% endfor %}
+{% endif %}
+{% for each_p in groups[org_name~'_peer'] %}
+      {{ hostvars[each_p]['inventory_hostname_short'] }}.{{ hostvars[each_p]['peer_domain'] }}: {{ hostvars[each_p]['ansible_ssh_host'] }}
+{% endfor %}

@@ -1,0 +1,70 @@
+# 用于单机构底层清数但不删除镜像
+# Use the -e input variable, eg："org=11"
+---
+
+- hosts: "*_api"
+  gather_facts: false
+  # vars_files:
+  #   - vars/var.yml
+  # vars:
+  #   fabric_data: "/data/{{inventory_hostname}}"
+  tasks:
+  - name: Remove all container
+    shell: docker stop `docker ps -aq` && docker rm `docker ps -aq`
+    ignore_errors: true
+
+  - name: Remove fabric persistent data
+    file:
+     path: "{{ fabric_data }}"
+     state: absent
+
+- hosts: "*_peer"
+  gather_facts: false
+  tasks:
+  - name: Remove these chaincode container images
+    shell: docker images | grep "dev" | cat | awk '{print $3}' | xargs docker rmi -f
+    ignore_errors: true
+
+  - name: Test if there are any container images about peer
+    shell: docker images | grep "dev" | cat | awk '{print $3}'
+    ignore_errors: true
+    register: images
+
+  - debug:
+      msg: "{{ images.stdout_lines }}"
+  - name: Remove fabric persistent data
+    file:
+     path: "{{ fabric_data }}"
+     state: absent
+
+- hosts: "*_orderer"
+  gather_facts: false
+  tasks:
+  - name: Remove all container
+    shell: docker stop `docker ps -aq` && docker rm `docker ps -aq`
+    ignore_errors: true
+    
+  - name: Remove fabric persistent data
+    file:
+     path: "{{ fabric_data }}"
+     state: absent
+
+- hosts: "kafka"
+  gather_facts: false
+  tasks:
+  - name: Remove all container
+    shell: docker stop `docker ps -aq` && docker rm `docker ps -aq`
+    ignore_errors: true
+    
+  - name: Remove fabric persistent data
+    file:
+     path: "{{ fabric_data }}"
+     state: absent
+
+- hosts: zookeeper
+  gather_facts: false
+  tasks:  
+  - name: Remove fabric persistent data
+    file:
+     path: "{{ fabric_data }}"
+     state: absent

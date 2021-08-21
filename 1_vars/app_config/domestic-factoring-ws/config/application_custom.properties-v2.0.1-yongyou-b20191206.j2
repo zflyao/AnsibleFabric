@@ -1,0 +1,34 @@
+logging.config=/home/blockchain/{{ app_name }}/config/logback-spring.xml
+logging.file=/home/blockchain/{{ app_name }}/logs/factoring.log
+server.port={{ instance_vars.listen_port }}
+spring.application.name=domesticFactoring
+spring.application.version=2.0.0
+platform.component.client.platformRuntimeServer=http://{{ instances[instance_name]['platform-service-runtime-ws']['domain'] }}:{{ instances[instance_name]['platform-service-runtime-ws']['listen_port'] }}
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+hoperun.plugins.amqp.fanoutQueueName: {{ instance_vars.rabbitmq_queue }}
+hoperun.plugins.amqp.fanoutExchangeName: {{ instance_vars.rabbitmq_exchange }}
+#hoperun.plugins.amqp.fanoutQueueName=blockchain.apiserver.event.org_zy
+#hoperun.plugins.amqp.fanoutExchangeName=blockchain.apiserver1
+hoperun.plugins.amqp.isStartEventReceiver=true
+hoperun.blockchain.configbean=true
+hoperun.blockchain.isEncrypt=true
+spring.rabbitmq.addresses={{ rabbitmq_address }}
+spring.rabbitmq.username={{ rabbitmq_user }}
+spring.rabbitmq.password={{ rabbitmq_pass }}
+hoperun.platform.base.apiserver.host=http://{{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}:{{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}/assetTradingPlatform
+runchain.application.keyListServiceUrl=http://{{ instances[instance_name]['keylist-ws']['domain'] }}:{{ instances[instance_name]['keylist-ws']['listen_port'] }}/api/keylist
+#jsb.component.client.jsbRuntimeServer=http://10.10.6.46:8080
+jsb.component.client.inUse=false
+#jsb.component.client.signUrl=http://10.10.6.46:5960
+
+runchain.fdd.sdk.appId=400257
+runchain.fdd.sdk.appSecret=TPq1QvLRjMMPklHYyV69p4h5
+runchain.fdd.sdk.url= http://test.api.fabigbig.com:18888/api/
+#runchain.fdd.sdk.notifyUrl= http://ub.shufafin.com
+#runchain.fdd.sdk.returnUrl= http://ub.shufafin.com/success.html
+runchain.fdd.sdk.notifyUrl= http://{{ instance_vars.domain }}:{{ instance_vars.listen_port }}
+runchain.fdd.sdk.returnUrl= http://{{ instance_vars.domain }}:{{ instance_vars.listen_port }}/success.html

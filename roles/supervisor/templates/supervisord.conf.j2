@@ -1,0 +1,21 @@
+[unix_http_server]
+file={{ supervisor_socket }}
+[inet_http_server]
+port={{ supervisor_http_port }}
+[supervisord]
+logfile={{ supervisor_log_file }}
+logfile_maxbytes=50MB
+logfile_backups=10
+loglevel=info
+pidfile={{ supervisor_pidfile }}
+;nodaemon=false
+minfds=1024
+minprocs=200
+user=root
+directory={{ supervisor_dir }}
+[rpcinterface:supervisor]
+supervisor.rpcinterface_factory = supervisor.rpcinterface:make_main_rpcinterface
+[supervisorctl]
+serverurl=http://127.0.0.1:{{ supervisor_http_port }}
+[include]
+files = conf.d/*.conf

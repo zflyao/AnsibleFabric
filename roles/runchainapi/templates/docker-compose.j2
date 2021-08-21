@@ -1,0 +1,40 @@
+version: '2'
+
+services:
+  runchainapi_{{ ccname }}:
+    container_name: runchainapi_{{ ccname }}
+    image: {{ harbor_domain | default ('hub.finrunchain.com') }}/fabric1.4/runchainapi:{{tag}}
+    restart: always
+    working_dir: /home/blockchain/JavaClientSDK
+    environment:
+      - LANG=en_US.UTF-8    
+    volumes:
+      - ./current.info:/home/blockchain/JavaClientSDK/current.info
+      - ./config:/home/blockchain/JavaClientSDK/config
+      - ./logs:/home/blockchain/JavaClientSDK/logs
+      - ./curl_scripts:/home/blockchain/JavaClientSDK/curl_scripts
+      - {{ worker_home }}/crypto-config:/home/blockchain/crypto-config
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+      - {{ api_port }}:{{ api_port }}
+    extra_hosts:
+
+{% for mq_hosts in groups[rabbitmq_gname] %}
+      {{ mq_hosts }}: {{ hostvars[mq_hosts].ansible_ssh_host }}
+{% endfor %}
+{% for peer_hosts in groups[peer_gname] %}
+      peer{{ hostvars[peer_hosts].inventory_hostname | regex_search('\\d+') }}.{{ peer_domain }}: {{ hostvars[peer_hosts].ansible_ssh_host }}
+{% endfor %}
+{% if ord_id|int == 1 and org_id|int != 1 %}
+{% for orderer_hosts in groups[orderer_gname] %}
+      orderer{{ hostvars[orderer_hosts].inventory_hostname | regex_search('\\d+') }}.{{ orderer_domain }}:  {{ hostvars['orderer0.'~ord_name]['slb'][conn_mode] }}
+{% endfor %} 
+{% else %}
+{% for orderer_hosts in groups[orderer_gname] %}
+      orderer{{ hostvars[orderer_hosts].inventory_hostname | regex_search('\\d+') }}.{{ orderer_domain }}: {{ hostvars[orderer_hosts].ansible_ssh_host }}
+{% endfor %}
+{% endif %} 

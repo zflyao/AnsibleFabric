@@ -1,0 +1,6 @@
+cfg = {"_id": "config_rs", configsvr: true,members:[
+    {"_id": 0,"host":"mongo-conf1.{{ domain }}:27019","priority":3},
+    {"_id": 1,"host":"mongo-conf2.{{ domain }}:27019","priority":2},
+    {"_id": 2,"host":"mongo-conf3.{{ domain }}:27019","priority":1},
+]}
+rs.initiate(cfg)

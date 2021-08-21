@@ -1,0 +1,23 @@
+version: '2'
+
+services:
+  {{ inventory_hostname }}:
+    image: {{ harbor_domain }}/{{ fabric_harbor_project }}/fabric-zookeeper:{{ fabric_thirdparty_version }}
+    container_name: {{ inventory_hostname }}
+    restart: always
+    environment:
+     ZOO_MY_ID: 1
+     ZOO_SERVERS: server.1={{ inventory_hostname }}:2888:3888
+    ports:
+      - 2181:2181
+      - 2888:2888
+      - 3888:3888
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./mount/data:/data
+      - ./mount/datalog:/datalog
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"

@@ -1,0 +1,19 @@
+---
+- name: 确保docker开机自启
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- debug: var=playbook
+
+- name: check apiserver_{{ ccname | default ('fft') }} container
+  shell: docker ps -aq -f name=apiserver_{{ ccname | default ('fft') }}
+  register: api_container
+
+- name: docker login
+  command: docker login {{ harbor_domain | default ('hub.finrunchain.com') }} -u {{ harbor_user | default('ansible')}} -p {{ harbor_passwd | default('Ansible123') }}
+  when: harbor
+
+- include_tasks: "{{ playbook }}.yml"
+  when:  api_container.stdout == ""

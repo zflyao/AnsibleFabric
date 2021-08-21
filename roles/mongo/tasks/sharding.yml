@@ -1,0 +1,35 @@
+---
+
+- name: 检查 mongodb keyfile
+  stat:
+    path: "{{ worker_home }}/mongodb/auth/mongodb-keyfile"
+  register: auth_keyfile
+- debug:
+    msg: "********* auth_keyfile is exits **********"
+  when: auth_keyfile.stat.exists
+
+- name: 创建 mongodb 认证目录
+  file:
+    path: "{{ worker_home }}/mongodb/auth"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+    state: directory
+  when: not auth_keyfile.stat.exists
+
+- name: 创建 keyFile
+  copy:
+    dest: "{{ worker_home }}/mongodb/auth/mongodb-keyfile"
+    content: "{{ mongodb_keyfile_content }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+    mode: 0400
+  when: not auth_keyfile.stat.exists
+
+- import_tasks: sharding-config.yml
+  when: inventory_hostname in groups['mongodb_conf']
+
+- import_tasks: sharding-sharding.yml
+  when: inventory_hostname in groups['mongodb_shard001']  + groups['mongodb_shard002'] + groups['mongodb_shard003']
+
+- import_tasks: sharding-mongos.yml
+  when: inventory_hostname in groups['mongodb_route']

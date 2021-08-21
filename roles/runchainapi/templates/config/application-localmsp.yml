@@ -1,0 +1,113 @@
+#此文件配置会覆盖application.yml中对应的配置项
+
+#rabbitmq配置
+spring:
+    rabbitmq:
+#        host: 10.10.7.30
+#        port: 5672
+        username: loc
+        password: loc
+        addresses: {% for mq_hosts in groups[rabbitmq_gname] %}{{ hostvars[mq_hosts].inventory_hostname }}:5672,{% endfor %} 
+
+platform:
+    component:
+        blockchain:
+            client:
+#账本1.0回调模式，支持AMQP，HTTP，MEMORY，请与开发确认配置的值
+#此处为MEMORY模式时，由当前应用实现回调逻辑，需要开发另行注入spring bean
+                blockchainLedger1CallbackType: AMQP
+#                blockchainLedger1CallbackType: HTTP
+#账本1.0选用HTTP模式时回调的Http服务的地址，地址配置模式为http://<host>:<port>/api/msg/<channel name>
+#其他模式时此配置项无作用
+#                blockchainLedger1HttpCallbackServerPath: http://10.10.5.104:5000/api/msg/channelfft
+            
+#当前fabric版本
+                #hyperledgerFabricSdkVersion: 1.0.4
+                hyperledgerFabricSdkVersion: 1.4.0
+#消息队列回调的Exchange，不同应用的apiserver实例应该配置不同的值
+                blockchainExchangeName: {{ queue_name }}
+#当前apiserver实例的名称，不同实例应该起不同的名称
+                callbackServerName: {{ inventory_hostname }}
+#当前实例选用的区块链配置参数，此配置表示选取下面多个channel配置中的哪一个
+#此处配置应与下面channels中配置的值对应
+                platformParams:
+#选用的通道名称
+                    channelName: {{ standard_cc[ccname].channel }}
+#选用的orderer机构名称
+                    ordererOrganizationName: {{ orderer_domain }}
+#选用的peer机构名称
+                    peerOrganizationName: {{ peer_domain }}
+#选用的业务圈名称
+                    businessCircleName: current.info
+#选用的peer节点的用户名称
+                    username: Admin@{{ peer_domain }}
+#配置的channels列表            
+                channels:
+#配置的channel名称
+                -   name: {{ standard_cc[ccname].channel }}
+#配置的channel对应的localmsp目录
+                    cryptoConfigPath: {{ worker_home }}/crypto-config
+#生态圈配置信息列表，对应为chaincode相关信息
+                    businessCircles:
+#配置的生态圈名称
+                    -   name: current.info
+#配置的chaincode名称
+                        chaincodeName: {{ccname}}
+#配置的chaincode路径，此路径可以配置为github.com/runchain/<chaincode name>
+#此参数在enableEcology = false 时无效，无需修改
+                        chaincodePath: todo
+#配置的chaincode版本
+#此参数在enableEcology = false 时无效，无需修改
+                        chaincodeVersion: 1.5
+#配置的chaincode对应的package路径
+#此参数在enableEcology = false 时无效，无需修改
+                        chaincodeInputStream: todo
+#此参数在enableEcology = false 时无效，无需修改
+                        chaincodeSourceLocation: 
+#此参数在enableEcology = false 时无效，无需修改
+                        chaincodeEndorsementPolicyLocation: todo
+#当前合约账本的版本，1.x, 3.x
+                        chaincodeLedgerVersion: {{chaincodeledgerversion}}
+#对应localmsp目录中的orderer相关的配置，请注意文件夹对应的机构名称不要写错
+                    ordererOrganizations:
+#MSP的orderer机构目录名称
+                    -   name: {{ orderer_domain }}
+                        orderers:
+#MSP的orderer机构目录下对应的orderer节点目录名称
+                        -   name: orderer{{api_id}}.{{ orderer_domain }}
+#orderer的grpc对应的端口，如果TLS启动，对应为grpcs://xxxxx
+                            location: grpcs://orderer{{api_id}}.{{ orderer_domain }}:{% if ord_id|int == 1 and api_id|int ==0 %}7001{% elif ord_id|int == 1 and api_id|int ==1 %}7002{% else %}7050{% endif %} 
+
+#对应localmsp目录中的orderer相关的配置，请注意文件夹对应的用户名称以及MSPID不要写错                
+                        admins:
+#当前用户对应的目录名称
+                        -   name: Admin@{{ orderer_domain }}
+#当前用户的fabric mspId
+                            mspid: Orderer{{ord_id}}MSP
+#对应localmsp目录中的peer相关的配置，请注意文件夹对应的机构名称不要写错
+                    peerOrganizations:
+#MSP的peers机构目录名称
+                    -   name: {{ peer_domain }}
+                        peers:
+#MSP的peers机构目录下对应的peers节点目录名称
+                        -   name: peer{{api_id}}.{{ peer_domain }}
+#peer的grpc对应的端口，如果TLS启动，对应为grpcs://xxxxx
+                            peerLocation: grpcs://peer{{api_id}}.{{ peer_domain }}:7051
+#如果为fabric1.3以上版本此项配置的端口和peerLocation相同
+                            eventhubLocation: grpcs://peer{{api_id}}.{{ peer_domain }}:7051
+#对应localmsp目录中的peer相关的配置，请注意文件夹对应的用户名称以及MSPID不要写错           
+                        admins:
+#当前用户对应的目录名称
+                        -   name: Admin@{{ peer_domain }}
+#此参数在enableEcology = false 时无效，无需修改
+                            enrollToken: todo
+#当前用户的fabric mspId
+                            mspid: Org{{org_id}}MSP
+
+                        users:
+#当前用户对应的目录名称
+                        -   name: User1@{{ peer_domain }}
+#此参数在enableEcology = false 时无效，无需修改
+                            enrollToken: todo
+#当前用户的fabric mspId
+                            mspid: Org{{org_id}}MSP

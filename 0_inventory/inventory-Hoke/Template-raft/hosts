@@ -1,0 +1,74 @@
+localhost ansible_ssh_host=127.0.0.1 ansible_ssh_pass="1qaz.Runchain" ansible_connection=local
+
+[zookeeper]
+zookeeper1 ansible_ssh_host=10.10.7.31
+zookeeper2 ansible_ssh_host=10.10.7.43
+zookeeper3 ansible_ssh_host=10.10.7.12
+zookeeper4 ansible_ssh_host=10.10.7.13
+zookeeper5 ansible_ssh_host=10.10.7.13
+
+[kafka]
+kafka1 ansible_ssh_host=10.10.7.31
+kafka2 ansible_ssh_host=10.10.7.43
+kafka3 ansible_ssh_host=10.10.7.12
+kafka4 ansible_ssh_host=10.10.7.13
+
+[ord1_orderer]
+orderer0.ord1 ansible_ssh_host=10.10.7.31
+orderer1.ord1 ansible_ssh_host=10.10.7.43
+orderer2.ord1 ansible_ssh_host=10.10.7.12
+orderer3.ord1 ansible_ssh_host=10.10.7.13
+orderer4.ord1 ansible_ssh_host=10.10.7.38
+
+[ord12_orderer]
+orderer0.ord12 ansible_ssh_host=10.10.7.12
+orderer1.ord12 ansible_ssh_host=10.10.7.13
+
+[ord11_orderer]
+orderer0.ord11 ansible_ssh_host=10.10.7.38
+
+[org1_peer]
+peer0.org1 ansible_ssh_host=10.10.7.31 genesis=true
+peer1.org1 ansible_ssh_host=10.10.7.43
+
+[org12_peer]
+peer0.org12 ansible_ssh_host=10.10.7.12
+peer1.org12 ansible_ssh_host=10.10.7.13
+
+[org11_peer]
+peer0.org11 ansible_ssh_host=10.10.7.38
+
+[org1_api]
+api0.org1 ansible_ssh_host=10.10.7.31
+api1.org1 ansible_ssh_host=10.10.7.43
+
+[org12_api]
+api0.org12 ansible_ssh_host=10.10.7.12
+api1.org12 ansible_ssh_host=10.10.7.13
+
+[org11_api]
+api0.org11 ansible_ssh_host=10.10.7.38
+
+[rabbitmq]
+mq0 ansible_ssh_host=10.10.7.38
+mq1 ansible_ssh_host=10.10.7.13
+
+[org1:children]
+ord1_orderer
+org1_peer
+org1_api
+
+[org12:children]
+ord12_orderer
+org12_peer
+org12_api
+
+[org11:children]
+ord11_orderer
+org11_peer
+org11_api
+
+[host_unique:children]
+ord1_orderer
+ord12_orderer
+ord11_orderer

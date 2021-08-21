@@ -1,0 +1,41 @@
+#!/bin/bash
+
+export JAVA_HOME=/usr/java/jdk{{ java_version }}
+export PATH=$JAVA_HOME/bin:$PATH
+
+APP_NAME={{ app_name }}
+ROOT_PATH={{ work_dir }}
+JAR=$(ls $ROOT_PATH/lib/${APP_NAME}-*-exec-encrypted.jar)
+STDOUT=$ROOT_PATH/logs/stdout.log
+{% if healthz['type'] == 'file' %}
+APP_LOG=$ROOT_PATH/{{ healthz['file'] }}
+{% endif %}
+JVM_ARGS="{{ instance_vars.jvm_args | default(jvm_args) }}"
+
+export JAVA_PACKAGE_DECRYPT_KEY=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAx1JoC8RA20yV+md+PB3pb2bi7dMKfWE7jsPx7pP//tlw3NHNz/vMRWAREOJr7QNy8j1Zb/VVRvho0Q62s1Q0B6W3ZyIztysvalwI4l0DW7tFezb50SBCg9OnOIdOD91Y/54bC3wqLJeAmD39HggPWgnn3oF2qXlKveYiHn9p5viH3gBpT5mNTYWA6/aK5AsHJ7ek6JKY1oujvZ2FEIJMp9xNiiJHhIBQKCstTirKQ7QR9qSvru5NGJfxv/J0NQ8/95aZM0t/g1KezohTbVWbp6mFyl/UpMtzLpSqlks2cUmUUt+8ttnPSVSmZWzZfm4mLe+tI2XgYPeGC/Hu3ZVUvQIDAQAB
+
+stop_java() {
+  PID=$(ps -ef | grep $ROOT_PATH | grep -v grep | awk '{ print $2 }')
+  if [ -n "$PID" ]; then
+    kill $PID
+  fi
+}
+
+start_java() {
+  mkdir -p $ROOT_PATH/logs
+  if [ -f $APP_LOG ]; then
+    mv $APP_LOG $APP_LOG-$(date +%Y%m%d-%H%M%S)
+  fi
+  cd $ROOT_PATH/bin/
+{% if instance_vars.supervisor is defined and instance_vars.supervisor %}
+  java $JVM_ARGS -Dfile.encoding=UTF-8 -Duser.timezone=GMT+08 -Droot.path=$ROOT_PATH -jar $JAR >$STDOUT 2>&1
+{% else %}
+  nohup java $JVM_ARGS -Dfile.encoding=UTF-8 -Duser.timezone=GMT+08 -Droot.path=$ROOT_PATH -jar $JAR >$STDOUT 2>&1 &
+{% endif %}
+}
+
+case $1 in
+  stop)   stop_java  ;;
+  start)  start_java ;;
+  *)      echo '请指定命令：stop 或 start'; exit 1 ;;
+esac

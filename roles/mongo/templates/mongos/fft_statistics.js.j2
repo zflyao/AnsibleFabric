@@ -1,0 +1,27 @@
+function fft_statistcs(){
+    
+    var res = db.channelfft.find({"docType":"com.hoperun.qkl.fft.api.dto.forfaiting.ForfaitingNotice","cryptoFlag":300}).toArray();
+    var amounts = 0;
+    var rmb = 0;
+    var usd = 0;
+    res.forEach(function(item){
+        var js = JSON.parse(item.txData);
+        var currency = '';
+        var dam = 0;
+        if(js.currency=='EC_RMB'){
+            currency='人民币（元）';
+            dam=js.sum; 
+            rmb+=js.sum;
+        }else if(js.currency=='EC_USD'){
+           currency='美元'; 
+           dam=js.sum*6.5;
+           usd+=js.sum;
+         }
+            
+        print('单号: '+js.id+'，挂单行：'+js.sellBank.name+ '，信用证金额:' +js.sum+' '+currency);
+        amounts+=dam;
+        });
+        print('截至'+new Date()+',平台共处理:'+res.length+' 笔福费廷交易，信用证金额总和，约合人民币：'+amounts+' 元。 其中，人民币总金额：'+rmb+' 元， 美元总金额：'+usd+' 美金');
+    };
+    
+    fft_statistcs();

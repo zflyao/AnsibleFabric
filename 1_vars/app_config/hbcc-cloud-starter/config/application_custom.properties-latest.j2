@@ -1,0 +1,13 @@
+##application config
+spring.application.name=hbcc-cloud
+spring.application.version=1.0.0
+#mongo config
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+#spring.data.mongodb.host=mongodb-cluster
+#spring.data.mongodb.port=27020
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+#spring.data.mongodb.username=mongouser
+#spring.data.mongodb.password=mongouser123
+#log
+logging.config={{ work_dir }}/config/logback-spring.xml
+server.port={{ instance_vars.listen_port }}

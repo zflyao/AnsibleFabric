@@ -1,0 +1,26 @@
+##database config
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+
+mongodb.addresses={{ mongodb_url[10:] }}
+mongodb.database={{ instance_vars.mongodb_database }}
+cache.mongo.uri={{ mongodb_url[10:] }}
+cache.mongo.database={{ instance_vars.mongodb_cache_database }}
+
+#blockchian config
+blockChain.host={{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}
+blockChain.port={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+blockChain.channel={{ eco_name }}_{{ instance_vars.channel }}
+
+hbcc.core.properties.myChain.name={{ eco_name }}/{{ instance_vars.channel }}
+
+hbcc.core.properties.cloudIntranetAddr=http://{{ instances['hbcc']['hbcc-cloud-starter']['public_addr'] }}
+{% if instance_vars.portal is defined and instance_vars.portal %}
+hbcc.core.properties.portalFlag=true
+hbcc.ugm.portalUrl.ip={{ instances[instance_vars.portal_instance]['portal-service-ws']['domain'] }}
+hbcc.ugm.portalUrl.port={{ instances[instance_vars.portal_instance]['portal-service-ws']['public_port'] }}
+hbcc.ugm.portalUrl.webUrl=http://{{ instances[instance_vars.portal_instance]['portal-frontend']['public_addr'] }}
+{% else %}
+hbcc.core.properties.portalFlag=false
+{% endif %}

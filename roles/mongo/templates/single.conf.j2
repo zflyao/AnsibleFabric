@@ -1,0 +1,12 @@
+fork = true
+auth = true
+port = {{ mongodb_single_port | default ('27010') }}
+dbpath = {{ worker_home }}/mongodb/data
+logpath = {{ worker_home }}/mongodb/logs/mongodb.log
+pidfilepath = {{ worker_home }}/mongodb/logs/mongodb.pid
+logappend = true
+journal = true
+nohttpinterface = true
+directoryperdb = true
+oplogSize = 1024
+maxConns = 20000

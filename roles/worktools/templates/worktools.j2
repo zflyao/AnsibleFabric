@@ -1,0 +1,156 @@
+#!/bin/bash
+# 功通说明： 创世机构创建channel等全流程
+# 如果要用到TLS 方式,则不能用IP方式,由于证书里面和域名有关
+# 应该在 /etc/hosts 里面添加所有的 域名 和 IP 的映射
+CORE_PEER_TLS_ENABLED=true
+if [ "$CORE_PEER_TLS_ENABLED" = "true" ]; then
+    ORG1_PEER0="peer0.org1.{{ fabric_domain }}:7051"
+    ORG1_PEER1="peer1.org1.{{ fabric_domain }}:7051"
+    ORG1_PEER2="peer2.org1.{{ fabric_domain }}:7051"
+    ORD1_ORDERER0="orderer0.ord1.{{ fabric_domain }}:7050"
+fi
+ORGNUM=$2
+CCVERSION=${3:-{{ channel_add[ccname].ccver }}}
+CHANNEL_NAME="{{ channel_add[ccname].channel }}"
+CCNAME="{{ ccname }}"
+CCPACKAGE="{{ ccname }}.out"
+INITARGS='{{ channel_add[ccname].initargs }}'
+TIME_OUT=3000
+ORDERER1_CA="$PWD/crypto-config/ordererOrganizations/ord{{ org_id }}.{{ fabric_domain }}/orderers/orderer0.ord{{ org_id }}.{{ fabric_domain }}/msp/tlscacerts/tlsca.ord{{ org_id }}.{{ fabric_domain }}-cert.pem"
+
+POLICY="OR  ('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member','Org5MSP.member','Org6MSP.member','Org7MSP.member','Org8MSP.member','Org9MSP.member','Org10MSP.member','Org11MSP.member','Org12MSP.member','Org13MSP.member','Org14MSP.member','Org15MSP.member','Org16MSP.member','Org17MSP.member','Org18MSP.member','Org19MSP.member','Org20MSP.member','Org21MSP.member','Org22MSP.member','Org23MSP.member','Org24MSP.member','Org25MSP.member','Org26MSP.member','Org27MSP.member','Org28MSP.member','Org29MSP.member','Org30MSP.member','Org31MSP.member','Org32MSP.member','Org33MSP.member','Org34MSP.member','Org35MSP.member','Org36MSP.member','Org37MSP.member','Org38MSP.member','Org39MSP.member','Org40MSP.member','Org41MSP.member','Org42MSP.member','Org43MSP.member','Org44MSP.member','Org45MSP.member','Org46MSP.member','Org47MSP.member','Org48MSP.member','Org49MSP.member','Org50MSP.member','Org51MSP.member','Org52MSP.member','Org53MSP.member','Org54MSP.member','Org55MSP.member','Org56MSP.member','Org57MSP.member','Org58MSP.member','Org59MSP.member','Org60MSP.member','Org61MSP.member','Org62MSP.member','Org63MSP.member','Org64MSP.member','Org65MSP.member','Org66MSP.member','Org67MSP.member','Org68MSP.member','Org69MSP.member','Org70MSP.member','Org71MSP.member','Org72MSP.member','Org73MSP.member','Org74MSP.member','Org75MSP.member','Org76MSP.member','Org77MSP.member','Org78MSP.member','Org79MSP.member','Org80MSP.member','Org81MSP.member','Org82MSP.member','Org83MSP.member','Org84MSP.member','Org85MSP.member','Org86MSP.member','Org87MSP.member','Org88MSP.member','Org89MSP.member','Org90MSP.member','Org91MSP.member','Org92MSP.member','Org93MSP.member','Org94MSP.member','Org95MSP.member','Org96MSP.member','Org97MSP.member','Org98MSP.member','Org99MSP.member','Org100MSP.member','Org101MSP.member','Org102MSP.member','Org103MSP.member','Org104MSP.member','Org105MSP.member','Org106MSP.member','Org107MSP.member','Org108MSP.member','Org109MSP.member','Org110MSP.member','Org111MSP.member','Org112MSP.member','Org113MSP.member','Org114MSP.member','Org115MSP.member','Org116MSP.member','Org117MSP.member','Org118MSP.member','Org119MSP.member','Org120MSP.member','Org121MSP.member','Org122MSP.member','Org123MSP.member','Org124MSP.member','Org125MSP.member','Org126MSP.member','Org127MSP.member','Org128MSP.member','Org129MSP.member','Org130MSP.member','Org131MSP.member','Org132MSP.member','Org133MSP.member','Org134MSP.member','Org135MSP.member','Org136MSP.member','Org137MSP.member','Org138MSP.member','Org139MSP.member','Org140MSP.member','Org141MSP.member','Org142MSP.member','Org143MSP.member','Org144MSP.member','Org145MSP.member','Org146MSP.member','Org147MSP.member','Org148MSP.member','Org149MSP.member','Org150MSP.member','Org151MSP.member','Org152MSP.member','Org153MSP.member','Org154MSP.member','Org155MSP.member','Org156MSP.member','Org157MSP.member','Org158MSP.member','Org159MSP.member','Org160MSP.member','Org161MSP.member','Org162MSP.member','Org163MSP.member','Org164MSP.member','Org165MSP.member','Org166MSP.member','Org167MSP.member','Org168MSP.member','Org169MSP.member','Org170MSP.member','Org171MSP.member','Org172MSP.member','Org173MSP.member','Org174MSP.member','Org175MSP.member','Org176MSP.member','Org177MSP.member','Org178MSP.member','Org179MSP.member','Org180MSP.member','Org181MSP.member','Org182MSP.member','Org183MSP.member','Org184MSP.member','Org185MSP.member','Org186MSP.member','Org187MSP.member','Org188MSP.member','Org189MSP.member','Org190MSP.member','Org191MSP.member','Org192MSP.member','Org193MSP.member','Org194MSP.member','Org195MSP.member','Org196MSP.member','Org197MSP.member','Org198MSP.member','Org199MSP.member','Org200MSP.member')"
+
+OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
+export FABRIC_CFG_PATH=$PWD/cryptotool/sampleconfig
+
+verifyResult () {
+	if [ $1 -ne 0 ] ; then
+		echo "!!!!!!!!!!!!!!! "$2" !!!!!!!!!!!!!!!!"
+                echo "================== ERROR !!! 执行失败 "$2" =================="
+		echo
+   		exit 1
+	fi
+}
+
+setGlobals () {
+    PEER=$PWD/cryptotool/$OS_ARCH/bin/peer
+    if [ -f "$PEER" ]; then
+        echo "使用peer可执行程序 -> $PEER"
+    else
+        echo "没有peer可执行程序"
+        exit 1
+    fi
+    CORE_PEER_LOCALMSPID="Org1MSP"
+    ORDERADDRESS=$ORD1_ORDERER0
+    ORDERER_CA=$ORDERER1_CA
+    CORE_PEER_TLS_ROOTCERT_FILE=$PWD/crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/peers/peer0.org{{ org_id }}.{{ fabric_domain }}/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=$PWD/crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}/users/Admin@org{{ org_id }}.{{ fabric_domain }}/msp
+    if [ $1 -eq 0 ]; then
+        CORE_PEER_ADDRESS=$ORG1_PEER0
+    elif [ $1 -eq 1 ]; then
+        CORE_PEER_ADDRESS=$ORG1_PEER1
+    else
+        CORE_PEER_ADDRESS=$ORG1_PEER2
+    fi
+    export CORE_PEER_TLS_ROOTCERT_FILE
+    export CORE_PEER_LOCALMSPID
+    export CORE_PEER_TLS_ENABLED
+    export CORE_PEER_MSPCONFIGPATH
+    export CORE_PEER_ADDRESS
+    env | grep CORE
+}
+
+1_CreateChannel (){
+    echo "*******************创建 channel****************************"
+    setGlobals 0
+    echo "$PEER channel create -o $ORDERADDRESS -t $TIME_OUT -c $CHANNEL_NAME -f ./channel-artifacts/channel{{ ccname | default ('fft') }}.tx  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA"
+    echo ""
+    if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+        $PEER channel create -o $ORDERADDRESS -c $CHANNEL_NAME -f ./channel-artifacts/channel{{ ccname | default ('fft') }}.tx
+    else
+        $PEER channel create -o $ORDERADDRESS -t $TIME_OUT -c $CHANNEL_NAME -f ./channel-artifacts/channel{{ ccname | default ('fft') }}.tx  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+    fi
+    verifyResult $? "Channel 创建失败"
+    echo "===================== Channel \"$CHANNEL_NAME\" 已创建成功 ===================== "
+	echo
+}
+
+2_UpdateAnchorPeers(){
+    echo "*******************设置环境变理****************************"
+    setGlobals $ORGNUM
+    echo "*****************org$PEER 升级锚节点**************"
+    if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+        $PEER channel update -o $ORDERADDRESS -c $CHANNEL_NAME -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors{{ ccname | default ('fft') }}.tx
+    else
+        $PEER channel update -o $ORDERADDRESS -c $CHANNEL_NAME -f ./channel-artifacts/${CORE_PEER_LOCALMSPID}anchors{{ ccname | default ('fft') }}.tx  --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+    fi
+	verifyResult $? "Anchor peer update failed"
+	echo "===================== org \"$CORE_PEER_LOCALMSPID\" on \"$CHANNEL_NAME\" 的锚节点升级成功 ===================== "
+	sleep 5
+	echo
+}
+
+3_JoinChannel(){
+    echo "*******************加入 channel****************************"
+    setGlobals $ORGNUM
+    $PEER channel join -b $CHANNEL_NAME.block
+    verifyResult $? ${FUNCNAME[0]} 
+}
+
+4_InstallCc () {
+    setGlobals $ORGNUM
+    $PEER chaincode install $CCPACKAGE
+    echo "===================== PEER$ch install ===================== "
+    sleep 2
+}
+
+5_Instantiate(){
+    echo "*******************instantiate chaincode only need one org*********************"
+    setGlobals 0
+    if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+        $PEER chaincode instantiate -o $ORDERADDRESS -C $CHANNEL_NAME -n $CCNAME -v $CCVERSION -c $INITARGS -P "$POLICY"
+    else
+        $PEER chaincode instantiate -o $ORDERADDRESS -C $CHANNEL_NAME -n $CCNAME -v $CCVERSION -c $INITARGS -P "$POLICY" --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+    fi
+}
+
+6_Upgrade () {
+    echo "*********************upgrade chaincode ******************"
+    setGlobals 0
+    if [ -z "$CORE_PEER_TLS_ENABLED" -o "$CORE_PEER_TLS_ENABLED" = "false" ]; then
+        $PEER chaincode upgrade -o $ORDERADDRESS -C $CHANNEL_NAME -n $CCNAME -v $CCVERSION -c $INITARGS -P "$POLICY"
+    else
+        $PEER chaincode upgrade -o $ORDERADDRESS -C $CHANNEL_NAME -n $CCNAME -v $CCVERSION -c $INITARGS -P "$POLICY" --tls $CORE_PEER_TLS_ENABLED --cafile $ORDERER_CA
+    fi
+}
+
+function chlist () {
+    echo "*************** List channels the peer joined in *************"
+    setGlobals $ORGNUM
+    $PEER channel list
+}
+
+if [ $1 -eq 1 ]; then
+    1_CreateChannel
+elif [ $1 -eq 2 ]; then
+    2_UpdateAnchorPeers
+elif [ $1 -eq 3 ]; then
+    3_JoinChannel
+elif [ $1 -eq 4 ]; then
+    4_InstallCc
+elif [ $1 -eq 5 ]; then
+    5_Instantiate
+elif [ $1 -eq 6 ]; then
+    6_Upgrade  
+elif [ $1 -eq 7 ]; then
+    chlist            
+else
+    echo "Command Error  createchannel     eg: ./$0 1"
+    echo "Command Error  UpdateAnchor      eg: ./$0 2 0"
+    echo "Command Error  joinchannel       eg: ./$0 3 0"
+    echo "Command Error  installcc         eg: ./$0 4 0"
+    echo "Command Error  instantiate       eg: ./$0 5 0 1.0"
+    echo "Command Error  upgrade           eg: ./$0 6 0 1.1"
+    echo "channel list                     eg: ./$0 7 0"    
+    exit
+fi

@@ -1,0 +1,18 @@
+# 该剧本用于生成指定组织的 key pair，需通过命令行提供组织的名称 -e org=org1
+   
+- name: Generate keylist
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars_files:
+    - 1_vars/common.yml  
+  vars:
+    env_src: "{{ hostvars['peer0.'~org]['env_src'] }}"
+    peer_domain: "{{ hostvars['peer0.'~org]['peer_domain'] }}"
+  tasks:
+  - template:
+      src: "{{ playbook_dir }}/2_shell/genkey.sh.j2"
+      dest: /tmp/genkey_{{ org }}.sh
+      mode: 0755
+
+  - command: /bin/bash /tmp/genkey_{{ org }}.sh

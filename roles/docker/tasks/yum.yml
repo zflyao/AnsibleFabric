@@ -1,0 +1,20 @@
+---
+- name: 生成 docker-ce.repo
+  template:
+    src: docker-ce.repo.j2
+    dest: /etc/yum.repos.d/docker-ce.repo
+
+- name: yum install docker-ce
+  yum:
+    name:
+      - device-mapper-persistent-data
+      - lvm2
+      - docker-ce
+    state: present
+
+- name: set hosts for proxy
+  lineinfile:
+    path: /etc/hosts
+    regex: "{{ harbor_domain }}"
+    line: "{{ harbor_proxy_address }} {{ harbor_domain }}" 
+  when: harbor_proxy_address is defined and harbor_proxy_address

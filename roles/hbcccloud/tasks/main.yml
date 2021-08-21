@@ -1,0 +1,57 @@
+---
+
+- name: 载入变量
+  include_vars: "../../../vars/{{ item }}.yml"
+  with_items:
+    - var
+    - dns
+    - hosts
+
+- name: 创建 hbcccloud 工作目录
+  file:
+    path: "{{ worker_home }}/hbcc_cloud"
+    state: directory
+    group: "{{ worker_user }}"
+    owner: "{{ worker_group }}"
+
+- name: 安装 hbcccloud
+  unarchive:
+    src: hbcc-cloud-service-ws-1.0.0.tar.gz
+    dest: "{{ worker_home }}/hbcc_cloud"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_group }}"
+
+- name: 确保原配置文件干净
+  file:
+    path: "{{ hbcccloud_dir }}/{ item }}"
+    state: absent
+  with_items:
+    - config/application_custom.properties
+    - config/logback-spring.xml
+    - bin/hbcc.sh
+
+- name: 上传配置文件和启动脚本
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ hbcccloud_dir }}/{{ item.dest }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_group }}"
+  with_items:
+    - { src: application_custom.properties , dest: config/application_custom.properties }
+    - { src: logback-spring.xml , dest: config/logback-spring.xml }
+    - { src: hbcc.sh , dest: bin/hbcc.sh }
+
+- name: 上传 hbcccloud 证书
+  copy:
+    src: etc
+    dest: "{{ hbcccloud_dir }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_group }}"
+
+- name: 确保工作目录属主
+  file:
+    path: "{{ hbcccloud_dir }}"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+    recurse: yes
+    state: directory

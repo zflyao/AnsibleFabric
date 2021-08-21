@@ -1,0 +1,17 @@
+---
+
+worker_group: blockchain
+worker_gid: 1500
+worker_user: blockchain
+worker_passwd: ZXCasd!2
+worker_uid: 1500
+worker_home: "/home/{{ worker_user }}"
+summary_dir: "{{ worker_home }}/summary"
+appops_user: appops
+appops_uid: 1501
+appops_home: "/home/{{ appops_user }}"
+appops_passwd: zxcASD!2
+host_name: "{{ inventory_hostname.split('.')[0] }}-{{ org_domain }}"
+
+repo: true
+centosrepo: http://10.10.255.201:8081/repository

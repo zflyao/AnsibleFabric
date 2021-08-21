@@ -1,0 +1,49 @@
+# This task is intended to install a chaincode to a peer
+---
+- name: 检测链码 {{ ccname }}-{{ version }} 是否已安装
+  shell: >
+    docker exec cli-{{ inventory_hostname }} peer chaincode list --installed 2>/dev/null |
+     awk -F '[ ,]' '$2=="{{ ccname }}" {print $5}'
+  register: installed_versions
+
+- name: fetch CC from the private net
+  get_url:
+    url: http://{{ cc_download.private_address }}{{ cc_download.url }}/{{ ccname }}-{{ version }}.out
+    dest: "{{ cli_home }}/artifacts/{{ ccname }}-{{ version }}.out"
+    mode: '0644'
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+  register: private_fetchCC
+  ignore_errors: true
+
+# - debug: var=private_fetchCC
+#   ignore_errors: true
+
+- name: fetch CC from the Internet
+  get_url:
+    url: http://{{ cc_download.public_address }}{{ cc_download.url }}/{{ ccname }}-{{ version }}.out
+    dest: "{{ cli_home }}/artifacts/{{ ccname }}-{{ version }}.out"
+    mode: '0644'
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+  register: Internet_fetchCC
+  ignore_errors: true
+  when: private_fetchCC.failed
+# - debug: var=Internet_fetchCC  
+#   ignore_errors: true
+  # failed_when: "'AWESOME' not in this.content"
+
+- name: 上传已打包的链码文件 {{ ccname }}-{{ version }}.out
+  copy:
+    src: chaincode/{{ ccname }}-{{ version }}.out
+    dest: "{{ cli_home }}/artifacts/{{ ccname }}-{{ version }}.out"
+  # when: installed_versions.stdout != version
+  when: private_fetchCC.failed and Internet_fetchCC.failed
+
+- name: 安装链码 {{ ccname }}-{{ version }}
+  command: docker exec cli-{{ inventory_hostname }} peer chaincode install artifacts/{{ ccname }}-{{ version }}.out
+  when: version not in installed_versions.stdout_lines
+
+
+# curl -Is -m 10 -o /dev/null -w %{http_code}
+# {{ cc_download.url }}/{{ ccname }}-{{ version }}.out

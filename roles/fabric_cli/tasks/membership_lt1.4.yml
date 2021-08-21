@@ -1,0 +1,96 @@
+---
+
+- name: setting fact value
+  set_fact:
+    add_addr: "{{ channel_add[ccname|default('fft')][add_orgid|int] }}"
+  tags: always
+
+- name: 检查工具
+  stat:
+    path: "{{ fabric_home }}/tools/cryptotool/linux-amd64/bin/configtxlator"
+  register: file_stat
+
+- name: copy cryptotool
+  copy:
+    src: cryptotool
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: "copy V{{fabric_deploy_ver}} bin"
+  copy:
+    src: "bin_v{{fabric_deploy_ver}}/"
+    dest: "{{ fabric_home }}/tools/cryptotool/linux-amd64/bin/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+
+- name: 判断证书是否已存在
+  stat:
+    path: "{{ fabric_home }}/tools/crypto-config"
+  register: file_exist
+
+- name: copy crypto-config
+  copy:
+    src: "{{ playbook_dir }}/{{ env_src }}/crypto-config"
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: file_exist.stat.exists == false
+
+- name: 查看本机监听端口
+  shell: netstat -lntp |grep 7059
+  register: netstat_7059
+  failed_when: "'FAILED' in netstat_7059.stderr"
+#  ignore_errors: yes
+- debug:
+    msg: "{{ netstat_7059.stdout_lines }}"
+  when: netstat_7059.rc >= 2
+
+- name: 启动configtxlator
+  shell: "nohup {{ fabric_home }}/tools/cryptotool/linux-amd64/bin/configtxlator start > /dev/null 2>&1 &"
+  ignore_errors: yes
+  when: netstat_7059.rc == 1
+
+- name: 等待7059监听端口
+  wait_for:
+    port: 7059
+    delay: 5
+
+- name: 创建 add{{ add_orgid }}-artifacts 目录
+  file:
+    path: "{{ fabric_home }}/tools/add{{ add_orgid }}-artifacts"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: fabric_deploy_ver == 1.1
+
+- name: "上传 {{ add_orgid }} confitx.yaml"
+  template:
+    src: configtx_v1.1.yaml.j2
+    dest: "{{ fabric_home }}/tools/add{{ add_orgid }}-artifacts/configtx.yaml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+  when: fabric_deploy_ver == 1.1  
+
+- name: "上传 add_{{ ccname | default ('fft') }}_org{{ add_orgid }}.sh"
+  template:
+    src: "membership_v{{fabric_deploy_ver}}.j2"
+    dest: "{{ fabric_home }}/tools/add_{{ ccname | default ('fft') }}_org{{ add_orgid }}.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+  tags: test
+
+- name: "执行 add_{{ ccname | default ('fft') }}_org{{ add_orgid }}.sh"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash add_{{ ccname | default ('fft') }}_org{{ add_orgid }}.sh  channel{{ ccname | default ('fft') }}
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: add_org_result
+  ignore_errors: yes
+- debug:
+    msg: "{{ add_org_result.stderr_lines }}"

@@ -1,0 +1,30 @@
+# channel新增机构，执行此剧本前确保创世已创建好对应的channel
+# Use the -e input variable, eg："add_orgid=12 ccname=warehouse fabric_deploy_ver=1.1"
+# 说明：
+# add_orgid 入盟机构，示例中为org12
+# ccname channel名，示例中warehouse为channelwarehouse， 默认 fft，即channelfft
+# fabric_deploy_ver: this option is require. fabric version support: 1.0, 1.1, 1.4.0
+# fabric_domain: 入盟机构的域名，默认finblockchain.cn, 如果定义了以下domain，则该值不生效
+# genesis_ord_domain: default is "ord{{ org_id }}.{{ fabric_domain }}"
+# genesis_org_domain: default is "org{{ org_id }}.{{ fabric_domain }}"
+# join_peer_domain: Define customize PeerOrgs domain of the membership, default is "org{{ add_orgid }}.{{ fabric_domain }}" . If you set this variable, the `join_peer_domain` will be override
+# join_orderer_domain: Define customize OrdererOrgs domain of the membership, default is "ord{{ add_orgid }}.{{ fabric_domain }}". If you set this variable, the `join_orderer_domain` will be override
+---
+
+- name: 在通道上添加入盟组织的 MSP 等配置
+  hosts: peer0.org1
+  gather_facts: false
+  tasks:
+  - name: 设置变量
+    set_fact:
+      join_channels: "{{ hostvars['peer0.'~add_org]['join_channels'] }}"
+      join_peer_domain: "{{ hostvars['peer0.'~add_org]['peer_domain'] }}"
+      join_orderer_domain: "{{ hostvars['peer0.'~add_org]['orderer_domain'] }}"
+
+  - include_role:
+      name: fabric_cli
+    vars:
+      operation: membership
+    loop: "{{ join_channels }}"
+    loop_control:
+      loop_var: channel_name

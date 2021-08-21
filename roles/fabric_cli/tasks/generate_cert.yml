@@ -1,0 +1,87 @@
+---
+- name: 无 orderer 的入盟组织检测所连接 orderer 组织（{{ ord_mspid }}）证书是否存在，如不存在则退出
+  stat:
+    path: "{{ playbook_dir }}/{{ env_src }}/crypto-config/ordererOrganizations/{{ orderer_domain }}"
+  delegate_to: localhost
+  register: o_cert_exist
+  tags: always
+  when: not own_orderer
+  failed_when: not o_cert_exist.stat.exists
+
+- name: 检测本地 peer 组织证书是否已存在
+  stat:
+    path: "{{ playbook_dir }}/{{ env_src }}/crypto-config/peerOrganizations/{{ peer_domain }}"
+  delegate_to: localhost
+  register: p_cert_exist
+  tags: always
+
+- name: 组织 peer 证书已存在时退出
+  fail:
+    msg: >-
+      本地 peer 组织证书已存在。请检查目录：
+      {{ playbook_dir }}/{{ env_src }}/crypto-config/peerOrganizations/{{ peer_domain }}
+      内证书是否完整，如有误请手动删除此目录后重新执行此 Playbook。
+  when: p_cert_exist.stat.exists
+
+- name: 生成 crypto-config.yaml 配置文件
+  template:
+    src: generate/crypto-config.yaml.j2
+    dest: "{{ cli_home }}/tools/crypto-config-{{ org_name }}.yaml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0600
+
+- name: 上传证书制作脚本
+  copy:
+    src: generate_cert.sh
+    dest: "{{ cli_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+
+- name: 执行生成组织证书脚本
+  # become: yes
+  # become_user: "{{ worker_user }}"
+  command: docker exec cli-{{ inventory_hostname }} /bin/bash /home/generate_cert.sh /home/crypto-config-{{ org_name }}.yaml
+  register: generate_cert
+
+- name: 输出执行结果
+  debug: 
+    msg: "{{ generate_cert.stdout_lines }}"
+
+- name: 确保本地证书根目录存在
+  file:
+    path: "{{ playbook_dir }}/{{ env_src }}/crypto-config"
+    state: directory
+    mode: 0755
+  delegate_to: localhost 
+
+- name: 生成组织证书后，将 Peer 证书同步到本地
+#  command: rsync -e "ssh -i {{ playbook_dir }}/summary_files/common/sshkey/id_rsa_1024_root"  -avz --delete root@{{ hostvars['peer0.'~org_name].ansible_ssh_host }}:{{ cli_home }}/tools/crypto-config/ {{ playbook_dir }}/{{ env_src }}
+#  delegate_to: localhost
+  synchronize:
+    mode: pull
+    src: "{{ cli_home }}/tools/crypto-config/peerOrganizations/{{ peer_domain }}"
+    dest: "{{ playbook_dir }}/{{ env_src }}/crypto-config/peerOrganizations/"
+    private_key: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+  register: p_cert_result
+
+- name: 输出执行结果
+  debug:
+    var: p_cert_result.stdout_lines
+
+- name: 如组织 {{ org_name }} 存在 Orderer，则将 Orderer 证书同步到本地
+  synchronize:
+    mode: pull
+    src: "{{ cli_home }}/tools/crypto-config/ordererOrganizations/{{ orderer_domain }}"
+    dest: "{{ playbook_dir }}/{{ env_src }}/crypto-config/ordererOrganizations/"
+    private_key: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+  register: o_cert_result
+  when: own_orderer
+
+- name: 输出执行结果
+  debug:
+    var: o_cert_result.stdout_lines
+  when: own_orderer

@@ -1,0 +1,41 @@
+---
+
+- name: Install NTP
+  yum:
+    name:
+      - ntp
+      - ntpdate
+    state: present
+
+- name: copy /etc/ntp.conf
+  template:
+    src: ntp.conf
+    dest: /etc/ntp.conf
+    backup: yes
+
+- name: copy /etc/step-tickers
+  template:
+    src: step-tickers
+    dest: /etc/ntp/step-tickers
+    backup: yes
+
+#- name: /etc/resolv.conf
+#  lineinfile:
+#    path: /etc/resolv.conf
+#    regexp: '^nameserver'
+#    insertafter: '^#nameserver'
+#    line: nameserver 114.114.114.114
+#
+- name: ntpd server
+  service:
+    name: ntpd
+    state: restarted
+    enabled: yes
+
+- name: ntpstat
+  shell: ntpstat
+  register: ntpstat_out
+  ignore_errors: true
+
+- debug:
+    msg: "{{ ntpstat_out.stdout_lines }}"

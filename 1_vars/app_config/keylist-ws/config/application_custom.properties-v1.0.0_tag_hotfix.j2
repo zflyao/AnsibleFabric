@@ -1,0 +1,6 @@
+server.port={{ instance_vars.listen_port }}
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+keylist.safebox=hbcc_cloud_Safebox
+keylist.key-list-file=${root.path}/script/key_list.yaml
+keylist.shell-path=${root.path}/script/keysync.sh

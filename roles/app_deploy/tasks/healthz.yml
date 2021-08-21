@@ -1,0 +1,31 @@
+- name: Check if TCP Service is up on {{ instance_vars.listen_port }}
+  wait_for:
+    port: "{{ instance_vars.listen_port }}"
+    timeout: "{{ healthz['timeout'] }}"
+  when: ( healthz['type'] == "tcp" ) or
+        ( healthz['type'] == "http" )
+  tags:
+  - start
+
+- name: Check if HTTP Service is up on {{ instance_vars.listen_port }}
+  uri:
+    url: http://0.0.0.0:{{ instance_vars.listen_port }}{{ healthz['interface'] }}
+    timeout: "{{ healthz['timeout'] }}"
+    status_code: "{{ healthz['status_code'] }}"
+  when: healthz['type'] == "http"
+  tags:
+  - start
+
+- name: Check if {{ healthz['file'] }} contains specified string
+  wait_for:
+    path: "{{ work_dir }}/{{ healthz['file'] }}"
+    search_regex: "{{ healthz['search_regex'] }}"
+  when: healthz['type'] == "file"
+  tags:
+  - start
+
+- name: Check via script
+  command: "{{ work_dir }}/scripts/healthz.sh"
+  when: healthz['type'] == "script"
+  tags:
+  - start

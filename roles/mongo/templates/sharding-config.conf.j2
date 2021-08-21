@@ -1,0 +1,12 @@
+fork=true
+auth=true
+port={{ mongodb_config_port | default ('27019') }}
+dbpath={{ config_dbpath }}
+logpath={{ worker_home }}/mongodb/logs/mongoconfig.log
+pidfilepath={{ worker_home }}/mongodb/logs/mongoconfig.pid
+logappend=true
+configsvr=true
+directoryperdb=true
+maxConns=20000
+replSet=config_rs
+keyFile={{ worker_home }}/mongodb/auth/mongodb-keyfile

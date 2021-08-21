@@ -1,0 +1,7 @@
+{% for program in hostprogram|sort %}
+[program:{{program}}]
+{% for key in hostprogram[program]|sort %}
+{{ key }} = {{ hostprogram[program][key] }}
+{% endfor %}
+
+{% endfor %}

@@ -1,0 +1,23 @@
+# 将 peer 加入 channel
+# 变量 inventory 指定需加入 channel 的 inventory
+# 如未通过命令行传递变量 channel=channelname，请确认主机变量 join_channels 存在，且值为需加入的通道列表
+---
+
+- name: Join channel
+  hosts: "{{ inventory | default('*_peer') }}"
+  gather_facts: false
+  vars:
+    operation: join_channel
+  tasks:
+  - name: 如通过命令行传递了变量 channel，则覆盖 join_channels
+    set_fact:
+      join_channels:
+      - "{{ channel }}"
+    when: channel is defined
+  - include_role:
+      name: fabric_cli
+    vars:
+      channel_name: "{{ channelitem }}"
+    loop: "{{ join_channels }}"
+    loop_control:
+      loop_var: channelitem

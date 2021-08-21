@@ -1,0 +1,16 @@
+{% if env == "ali" %}
+Server=172.16.0.106
+ServerActive=172.16.0.106
+{% elif env == "ronglian" %}
+Server=172.16.0.3
+{% elif env == "ccbcloud" %}
+Server=10.1.50.14
+{% endif %}
+Hostname={{ ansible_hostname }}
+LoadModule=zabbix_module_docker.so
+LoadModulePath={{ zabbixagent_home }}/module
+StartAgents=5
+LogFileSize=1024
+PidFile=/var/run/zabbix/zabbix_agentd.pid
+LogFile=/var/log/zabbix/zabbix_agentd.log
+Include={{ zabbixagent_home }}/zabbix_agentd.d/*.conf

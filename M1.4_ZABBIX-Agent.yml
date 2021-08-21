@@ -1,0 +1,12 @@
+#说明： 共有2个外部变量通过 -e 参数传递 eg："inventory=org11_hbcc"
+#变量1：inventory（值为主机对象）
+#变量2：env（值为ronglian或ali）
+#例如：ansible-playbook -i ./inventory/aliyun-prd M10_ZABBIX-Agent.yml -e "env=ali inventory=org19_hbcccloud"
+---
+
+- name: zabbix-agent
+  hosts: "{{ inventory }}"
+  gather_facts: false
+  roles:
+    - zabbix_agent
+

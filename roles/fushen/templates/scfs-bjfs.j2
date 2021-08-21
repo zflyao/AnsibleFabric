@@ -1,0 +1,50 @@
+##application config
+spring.application.name=bjfs
+spring.application.version=1.0.0
+##database config
+spring.datasource.url=jdbc:postgresql://db.{{ domain }}:3433/tf_fushen
+spring.datasource.username=blockchain
+spring.datasource.password=Pgadmin#root
+spring.jpa.hibernate.ddl-auto=none
+##mongodb
+spring.data.mongodb.uri=mongodb://{{ mongodb_user_name }}:{{ mongodb_user_passwd }}@{{ mongodb_p_dns }}:27010,{{ mongodb_s_dns }}:27010/{{ mongodb_name }}
+spring.data.mongodb.database={{ mongodb_name }}
+#collectins
+hoperun.book.collection.finish=channel_finish
+hoperun.book.collection.local=channel_local
+hoperun.book.collection.temp=channel_temp
+hoperun.book.collection.full=channel_full
+hoperun.book.collection.oss=channel_oss
+##cache address
+hoperun.cache.hazelcast.address={{ hazelcast0_dns }}:5702,{{ hazelcast1_dns }}:5702
+hoperun.cache.hazelcast.groupName=test
+hoperun.cache.hazelcast.groupPasswd=test-pass
+#businessLine
+hbcc.core.properties.businessLine=BJFS
+#cloud
+hbcc.core.properties.cloudHost=http://{{ hbcccloud_dns }}:4040
+#http
+hoperun.http.sessionTimeoutMinutes=30
+hoperun.http.maximumSessions=1
+hbcc.ugm.maxSessionConcurrency=1
+#mq
+hoperun.plugins.amqp.queueName=rc-assetQueue
+spring.rabbitmq.addresses={{ rabbitmq1_dns }}:5672,{{ rabbitmq2_dns }}:5672
+spring.rabbitmq.username=loc
+spring.rabbitmq.password=loc
+hoperun.plugins.amqp.isStartEventReceiver=true
+#log
+logging.level.root=INFO
+#configService
+#hoperun.blockchain.configbean=true
+#hoperun.local.configbean=true
+#hoperun.book.configbean=true
+#hoperun.utxo.configbean=false
+#api
+hoperun.platform.base.apiserver.host=http://{{ api_dns }}:3001/assetTradingPlatform
+hoperun.platform.base.authorizerVersion=33c8c376b4ebfbdaf7d1d7ccd0f62bae73c56347d30f212908a8da76806c08f4
+hoperun.platform.local.store.localTableName=utxo
+mc.plugin.config.rootPath=/home/blockchain/scfs-bjfs-ws/config/plugin-config
+hoperun.plugins.security.certificate.rootCAPubKeyName=hoperun_ca.cer
+hoperun.plugins.security.certificate.rootCAPriKeyName=hoperun_ca.key
+hoperun.plugins.security.certificate.rootCAPriKeyFilePath=/home/blockchain/scfs-bjfs-ws/config/hoperun_ca.key

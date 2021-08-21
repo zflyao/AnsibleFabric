@@ -1,0 +1,67 @@
+# adminorderer: 待加入通道的管理组织的 Orderer 节点
+# hostvars['localhost']['adminpeer']: 待加入通道的管理组织的 Peer 节点
+---
+- name: 创建 {{ addord }} 的 MSP 目录
+  file:
+    path: "{{ cli_home }}/tools/crypto-config/ordererOrganizations/"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+
+- name: 将 {{ addord }} 的 MSP 目录同步到 {{ adminorderer }}
+  synchronize: 
+    src: "{{ env_src }}/crypto-config/ordererOrganizations/{{ adding_orderer_domain }}"
+    dest: "{{ cli_home }}/tools/crypto-config/ordererOrganizations/"
+    private_key: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+    delete: yes
+
+- name: 创建 {{ addord }}-artifacts 目录
+  file:
+    path: "{{ cli_home }}/tools/{{ addord }}-artifacts"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 上传 {{ addord }} 的 configtx.yaml
+  template:
+    src: membership/add_orderer_configtx.yaml.j2
+    dest: "{{ cli_home }}/tools/{{ addord }}-artifacts/configtx.yaml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: 上传 add_orderer.sh
+  template:
+    src: "membership/add_orderer.sh.j2"
+    dest: "{{ cli_home }}/tools/{{ addord }}-artifacts/add_orderer.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+
+- name: 执行 add_orderer.sh
+  shell: docker exec cli-{{ inventory_hostname }} /home/{{ addord }}-artifacts/add_orderer.sh {{ channel }}
+
+# - name: 获取由管理 Orderer 签名的 config_update 信封文件
+#   fetch:
+#     src: "{{ cli_home }}/tools/{{ addord }}-artifacts/config_update_{{ channel }}_in_envelope.pb"
+#     dest: "{{ env_src }}/channel-artifacts/"
+#     flat: yes
+#   tags: adminpeer
+
+# - name: 将信封文件上传到管理 Peer
+#   copy:
+#     src: "{{ env_src }}/channel-artifacts/config_update_{{ channel }}_in_envelope.pb"
+#     dest: "{{ worker_home }}/cli-{{ adminpeer }}/tools/{{ addord }}-artifacts/"
+#   delegate_to: "{{ adminpeer }}"
+#   delegate_facts: True
+#   tags: adminpeer
+ 
+# - name: 通过管理 Peer 提交配置更新
+#   shell: |
+#     docker exec cli-{{ adminpeer }} \
+#      bash -c 'peer channel update -f /home/{{ addord }}-artifacts/config_update_{{ channel }}_in_envelope.pb \
+#      -c {{ channel }} -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA'
+#   delegate_to: "{{ adminpeer }}"
+#   delegate_facts: True
+#   tags: adminpeer

@@ -1,0 +1,5 @@
+admin = db.getSiblingDB("admin")
+db.createUser({ user:"{{ mongodb_useradmin_name }}",pwd:"{{ mongodb_useradmin_passwd }}",roles:["userAdminAnyDatabase"]})
+db.getSiblingDB("admin").auth("{{ mongodb_useradmin_name }}", "{{ mongodb_useradmin_passwd }}" )
+db.createUser({ user:"{{ mongodb_root_name }}",pwd:"{{ mongodb_root_passwd }}",roles:["root"]})
+db.auth("{{ mongodb_root_name }}","{{ mongodb_root_passwd }}")

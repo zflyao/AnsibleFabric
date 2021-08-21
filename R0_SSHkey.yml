@@ -1,0 +1,10 @@
+# 创建、分发 sshkey，需通过命令行提供 ssh 密码
+# ansible-playbook -e ansible_ssh_pass='password' R0_SSHkey.yml
+---
+- name: 创建分发 sshkey
+  hosts: "{{ inventory | default('*_unique') }}"
+  tasks:
+  - import_role:
+      name: common 
+    vars:
+      operation: sshkey

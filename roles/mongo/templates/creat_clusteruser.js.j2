@@ -1,0 +1,4 @@
+admin = db.getSiblingDB("admin")
+db.getSiblingDB("admin").auth("{{ mongodb_useradmin_name }}", "{{ mongodb_useradmin_passwd }}" )
+db.createUser({ user:"{{ mongodb_cluster_admin_name }}",pwd:"{{ mongodb_cluster_admin_passwd }}",roles:["clusterAdmin"]})
+db.auth("{{ mongodb_cluster_admin_name }}","{{ mongodb_cluster_admin_passwd }}")

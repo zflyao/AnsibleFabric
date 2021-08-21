@@ -1,0 +1,137 @@
+---
+# 变量：
+#   app_name：【必需】应用名称，与 1_vars/apps.yml 字典的 key 对应
+#   instance_name：【必需】实例名称。
+#   version：【可选】需发布版本
+#   inventory：【必需】发布主机
+# Tag：
+#   stop
+#   deploy
+#   config
+#   start
+#   restart
+#
+# 例：
+# ansible-playbook -e app_name=keylist-ws -e instance_name=youxin -e version=v1.0.0_tag_hotfix -e inventory=keylist0.org21 -t restart app.yml
+# 如果未输入变量，则需要通过终端将信息输入
+
+- name: 命令行未提供足够信息时，交互式获取应用与主机信息
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: always
+  tasks:
+  - name: app name
+    pause:
+      prompt: "请输入应用名称"
+    register: app_name_p
+    when: app_name is undefined
+  - name: instance name
+    pause:
+      prompt: "请输入实例名称，一般为链码名称"
+    register: instance_name_p
+    when: instance_name is undefined
+  - name: inventory
+    pause:
+      prompt: "请输入目标主机 inventory"
+    register: inventory_p
+    when: inventory is undefined
+
+- name: "Deploying {{ app_name }}"
+  hosts: "{{ inventory | default(hostvars['localhost']['inventory_p']['user_input']) }}"
+  gather_facts: false
+  vars_files:
+    - 1_vars/common.yml
+    - 1_vars/chaincode.yml
+  #   - 1_vars/apps.yml
+  #   - 1_vars/thirdparty.yml
+  serial: 1
+  any_errors_fatal: True
+  tasks:
+  - set_fact:
+      app_name: "{{ hostvars['localhost']['app_name_p']['user_input'] }}"
+    when: app_name is undefined
+    tags: always
+
+  - set_fact:
+      instance_name: "{{ hostvars['localhost']['instance_name_p']['user_input'] }}"
+    when: instance_name is undefined
+    tags: always
+
+  - set_fact:
+      inventory: "{{ hostvars['localhost']['inventory_p']['user_input'] }}"
+    when: inventory is undefined
+    tags: always
+
+  - name: Define vars
+    set_fact:
+      time: "{{ lookup('pipe', 'date +%Y%m%d.%H%M%S') }}"
+      instance_dir: "{{ worker_home }}/{{ instance_name }}"
+      work_dir: "{{ instance_dir }}/{{ app_name }}"
+    tags: always
+
+  - name: Include app vars file
+    include_vars:
+      file: 1_vars/apps.yml
+      name: apps
+    tags: always
+
+  - name: Include thirdparty vars file
+    include_vars:
+      file: 1_vars/thirdparty.yml
+      name: thirdparty
+    tags: always
+
+  - debug:
+      msg:
+      - 主机：{{ inventory_hostname }}
+      - 实例：{{ instance_name }}
+      - 应用：{{ app_name }}（{{ vars['apps'][app_name]['description'] }}）
+      - 版本：{{ instances[instance_name][app_name]['version'] }}
+      - 操作：{{ ansible_run_tags | join(",") }}
+      - 目录：{{ work_dir }}
+    tags: always
+
+  # tasks:
+  # - debug:
+  #     msg:
+  #     - instance_dir: "{{instance_dir}}"
+  #     - work_dir: "{{work_dir}}"
+
+  - name: Set common variables 
+    set_fact:
+      app_type: "{{ vars['apps'][app_name]['app_type'] }}"
+      config_files: "{{ vars['apps'][app_name]['config_files'] | default('[]', true) }}"
+      instance_configs: "{{ instances[instance_name][app_name]['instance_configs'] | default('[]') }}"
+      sub_directories: "{{ vars['apps'][app_name]['sub_directories'] | default('[]') }}"
+      version: "{{ instances[instance_name][app_name]['version'] | default('latest') }}"
+      healthz: "{{ instances[instance_name][app_name]['healthz'] | default(vars['apps'][app_name]['healthz']) }}"
+      instance_vars: "{{ instances[instance_name][app_name] }}"
+      hosts: "{{ vars['apps'][app_name]['hosts'] |default('[]') }}"
+    tags: always
+
+  - name: Set docker variables for docker apps
+    set_fact:
+      docker_image_project: "{{ vars['apps'][app_name]['docker_image_project'] }}"
+      docker_image_name: "{{ vars['apps'][app_name]['docker_image_name'] }}"
+    when: app_type == "docker"
+    tags: always
+      
+  - name: Set Java variables for java apps
+    set_fact:
+      java_version: "{{ vars['apps'][app_name]['java_version'] }}"
+      jvm_args: "{{ vars['apps'][app_name]['jvm_args'] | default('') }}"
+      main_class: "{{ vars['apps'][app_name]['main_class'] | default('') }}"
+    when: app_type == "java"
+    tags: always
+
+  - import_role:
+      name: fabric_cli
+      tasks_from: fetch_channel_height
+    # vars:
+      # channel: "{{ instances[instance_name]['platform-hfclient-sdk-ws']['channel'] }}"
+    tags: config
+    when: instance_name == "platform-hfclient-sdk-ws"
+
+  - import_role:
+      name: app_deploy

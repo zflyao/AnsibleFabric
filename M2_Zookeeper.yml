@@ -1,0 +1,14 @@
+# orderer deploy usage
+# Use the -e input variable, eg："inventory=zookeeper1 harbor_project=blockchain"
+# inventory 默认zookeeper群组
+# harbor: true 使用私库pull images
+# harbor_project=blockchain 默认的项目名称
+---
+
+- name: zookeeper
+  hosts: "{{ inventory | default ('zookeeper') }}"
+  gather_facts: false
+  vars:
+    operation: install
+  roles:
+    - role: zookeeper

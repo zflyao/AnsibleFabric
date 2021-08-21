@@ -1,0 +1,30 @@
+---
+
+- name: "创建组 {{ worker_group }}"
+  group:
+    name: "{{ worker_group }}"
+    gid: "{{ worker_gid }}"
+    state: present
+
+- name: "创建用户 {{ worker_user }}"
+  user:
+    name: "{{ worker_user }}"
+    password: "{{ worker_passwd | password_hash('sha512') }}"
+    uid: "{{ worker_uid }}"
+    group: "{{ worker_group }}"
+    non_unique: yes
+    createhome: yes
+    home: "{{ worker_home }}"
+    append: yes
+    state: present
+
+#- name: Set authorized key, removing all the authorized keys already set
+#  authorized_key:
+#    user: root
+#    key: '{{ item }}'
+#    state: present
+##    exclusive: True
+#  with_file:
+#    - "{{ playbook_dir }}/summary_files/common/sshkey/hokexps.pub"
+#    - "{{ playbook_dir }}/summary_files/common/sshkey/id_rsa_1024_root.pub"
+#  tags: key

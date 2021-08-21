@@ -1,0 +1,21 @@
+---
+- name: 检查通道 {{ channel_name }} 是否已创建
+  command: >
+    docker exec cli-{{ inventory_hostname }} 
+    /home/peer_channel.sh fetch {{ channel_name }} config
+  register: channel_st
+  ignore_errors: yes
+
+- name: 上传 {{ channel_name }} 的创世配置块
+  copy:
+    src: "{{ env_src }}/channel-artifacts/{{ channel_name }}_tx.pb"
+    dest: "{{ cli_home }}/tools/channel-artifacts/"
+
+- name: 创建通道 {{ channel_name }}
+  command: >
+    docker exec cli-{{ inventory_hostname }}
+    /home/peer_channel.sh create {{ channel_name }}
+  args:
+    chdir: "{{ cli_home }}"
+  when: channel_st.rc != 0
+

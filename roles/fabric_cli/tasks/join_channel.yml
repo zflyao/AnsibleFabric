@@ -1,0 +1,17 @@
+---
+- name: 检查该 peer 是否已加入通道 {{ channel_name }}
+  shell: docker exec cli-{{ inventory_hostname }} peer channel list 2>&1 | grep ^{{ channel_name }}$
+  register: joined_channel
+  ignore_errors: yes
+
+#- name: 上传通道 {{ channel_name }} 的创世区块
+#  copy:
+#    src: "{{ env_src }}/channel-artifacts/{{ channel_name }}.block"
+#    dest: "{{ cli_home }}/tools/channel-artifacts/"
+#  when: joined_channel.rc != 0
+
+- name: 加入通道 {{ channel_name }}
+  command: docker exec cli-{{ inventory_hostname }} /home/peer_channel.sh join {{ channel_name }}
+  args:
+    chdir: "{{ cli_home }}"
+  when: joined_channel.rc != 0

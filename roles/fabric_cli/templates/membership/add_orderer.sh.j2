@@ -1,0 +1,56 @@
+#!/bin/bash
+
+CHANNEL=$1
+WORK_DIR=$(cd $(dirname $0); pwd)
+ADD_ORDERER_NAME={{ adding_ord_mspname }}
+ADD_ORDERER_DOMAIN={{ adding_orderer_domain }}
+
+SetGlobals() {
+  if [ $1 == "orderer" ]; then
+    export CORE_PEER_LOCALMSPID={{ ord_mspname }}
+    export CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ orderer_domain }}/orderers/orderer0.{{ orderer_domain }}/tls/ca.crt
+    export CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ orderer_domain }}/users/Admin@{{ orderer_domain }}/msp
+    export CORE_PEER_ADDRESS=orderer0.{{ orderer_domain }}:7001
+  else
+    export CORE_PEER_LOCALMSPID={{ org_mspname }}
+    export CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/{{ peer_domain }}/peers/peer0.{{ peer_domain }}/tls/ca.crt
+    export CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/{{ peer_domain }}/users/Admin@{{ peer_domain }}/msp
+    export CORE_PEER_ADDRESS=peer0.{{ peer_domain }}:7051
+  fi
+}
+
+cd $WORK_DIR
+SetGlobals orderer
+
+# 根据 configtx.yaml 输出待添加 Orderer 组织的 JSON 配置
+configtxgen -configPath . -printOrg ${ADD_ORDERER_NAME} > ${ADD_ORDERER_NAME}.json || exit 1
+
+# 从通道中抓取最新的配置，解码为 config_${CHANNEL}.json 文件
+peer channel fetch config config_block_${CHANNEL}.pb -c $CHANNEL -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA || exit 2
+configtxlator proto_decode --input config_block_${CHANNEL}.pb --type common.Block | jq .data.data[0].payload.data.config > config_${CHANNEL}.json || exit 3
+
+# 将新 Orderer MSP 的 JSON 加入原配置文件，并添加所有新增的 Orderer 地址
+jq -s ".[0] * {\"channel_group\":{\"groups\":{\"Orderer\":{\"groups\":{\"$ADD_ORDERER_NAME\":.[1]}}}}}" config_${CHANNEL}.json ${ADD_ORDERER_NAME}.json \
+{% if groups[addord~'_orderer'] | length == 1 %}
+  | jq ".channel_group.values.OrdererAddresses.value.addresses = (.channel_group.values.OrdererAddresses.value.addresses + [\"orderer0.${ADD_ORDERER_DOMAIN}:7050\"] | unique)" \
+{% else %}
+{% for each_orderer in groups[addord~'_orderer'] %}
+  {# | jq ".channel_group.values.OrdererAddresses.value.addresses = (.channel_group.values.OrdererAddresses.value.addresses + [\"orderer{{ loop.index0 }}.${ADD_ORDERER_DOMAIN}:700{{ loop.index }}\"] | unique)" \ #}
+  | jq ".channel_group.values.OrdererAddresses.value.addresses = (.channel_group.values.OrdererAddresses.value.addresses + [\"orderer{{ loop.index0 }}.${ADD_ORDERER_DOMAIN}:7050\"] | unique)" \
+{% endfor %}
+{% endif %}
+  > modified_config_${CHANNEL}.json || exit 4
+ 
+# 使用 configtxlator 比对 config_${CHANNEL}.pb 和 modified_config_${CHANNEL}.pb 并生成 config_update_${CHANNEL}.pb 文件
+configtxlator proto_encode --input config_${CHANNEL}.json --type common.Config --output config_${CHANNEL}.pb || exit 5
+configtxlator proto_encode --input modified_config_${CHANNEL}.json --type common.Config --output modified_config_${CHANNEL}.pb || exit 6
+configtxlator compute_update --channel_id $CHANNEL --original config_${CHANNEL}.pb --updated modified_config_${CHANNEL}.pb --output config_update_${CHANNEL}.pb || exit 7
+# 将 config_update_${CHANNEL}.pb 封装，加上外部配置后生成 config_update_${CHANNEL}_in_envelope.pb
+configtxlator proto_decode --input config_update_${CHANNEL}.pb --type common.ConfigUpdate | jq . > config_update_${CHANNEL}.json || exit 8
+echo "{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"$CHANNEL\", \"type\":2}},\"data\":{\"config_update\":$(cat config_update_${CHANNEL}.json)}}}" | jq . > config_update_${CHANNEL}_in_envelope.json || exit 9
+configtxlator proto_encode --input config_update_${CHANNEL}_in_envelope.json --type common.Envelope --output config_update_${CHANNEL}_in_envelope.pb || exit 10
+# 对文件签名
+peer channel signconfigtx -f config_update_${CHANNEL}_in_envelope.pb
+
+SetGlobals peer
+peer channel update -f config_update_${CHANNEL}_in_envelope.pb -c $CHANNEL -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA

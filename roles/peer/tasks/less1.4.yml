@@ -1,0 +1,69 @@
+---
+- name: 上传 peer 镜像
+  copy:
+    src: "../../../files/docker-images/{{ fabric_deploy_ver | default('1.0') }}/{{ item }}"
+    dest: "{{ worker_home }}/images/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - baseos.tar
+  when: not harbor
+
+- name: 镜像导入docker
+  command: docker load -i {{ worker_home }}/images/{{ item }}
+  with_items:
+    - baseos.tar
+  when: not harbor
+
+- name: pull peer images
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project | default('blockchain') }}/hyperledger/fabric-peer:latest
+
+- name: pull baseos images of fabric version 1.0 
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/hyperledger/fabric-baseos:x86_64-0.3.2
+  when: harbor_project != "blockchain1.1"
+  
+#fabric_v1.0版本, org1使用ccenv版本
+- name: pull ccenv images in org1
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/blockchain3.0/hyperledger/fabric-ccenv:x86_64-1.0.4
+  when: harbor_project != "blockchain1.1" and org_id == 1
+  
+#fabric_v1.0版本, 非org1使用ccenv版本
+- name: pull ccenv images not in org1
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/hyperledger/fabric-ccenv:x86_64-1.0.4
+  when: harbor_project != "blockchain1.1" and org_id != 1
+
+#fabric_v1.0版本, 非org1使用ccenv版本
+- name: tag docker images with fabric_v1.0
+  command: docker tag {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/hyperledger/fabric-{{ item }} hyperledger/fabric-{{ item }}
+  with_items:
+    - "ccenv:x86_64-1.0.4"
+    - "baseos:x86_64-0.3.2"
+  when: harbor_project != "blockchain1.1" and org_id != 1
+  
+#fabric_v1.0版本, org1使用ccenv版本
+- name: tag docker images with fabric_v1.0 in org1
+  command: docker tag {{ harbor_domain | default ('hub.finrunchain.com') }}/blockchain3.0/hyperledger/fabric-ccenv:x86_64-1.0.4 hyperledger/fabric-ccenv:x86_64-1.0.4
+  when: harbor_project != "blockchain1.1" and org_id == 1
+  
+#fabric_v1.0版本, org1使用baseos版本
+- name: tag docker images with fabric_v1.0 in org1
+  command: docker tag {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/hyperledger/fabric-{{ item }} hyperledger/fabric-{{ item }}
+  with_items:
+    - "baseos:x86_64-0.3.2"
+  when: harbor_project != "blockchain1.1" and org_id == 1
+
+#以上为fabric_v1.1版本
+- name: pull ccenv images
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/hyperledger/fabric-ccenv:x86_64-1.1.1
+  when: harbor_project == "blockchain1.1"
+  
+- name: pull baseos images of fabric version 1.1
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/hyperledger/fabric-baseos:x86_64-0.4.6
+  when: harbor_project == "blockchain1.1"
+
+- name: tag docker images with fabric_v1.1
+  command: docker tag {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/hyperledger/fabric-{{ item }} hyperledger/fabric-{{ item }}
+  with_items:
+    - "ccenv:x86_64-1.1.1"
+    - "baseos:x86_64-0.4.6"
+  when: harbor_project == "blockchain1.1"

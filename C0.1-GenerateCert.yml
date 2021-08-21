@@ -1,0 +1,15 @@
+# 用于生成组织的 MSP 证书并下载到 Ansible 控制机的 {{ env_src }}/crypto-config 目录
+# 请通过命令行变量 org 指定需生成组织的名称，默认为 org1
+# 示例：
+# ansible-playbook C0-GenerateCert.yml -e org=org2
+
+---
+   
+- name: GENERATE and PULL the MSP certs
+  hosts: peer0.{{ org | default('*') }}
+  gather_facts: false
+  tasks:
+  - import_role:
+      name: fabric_cli
+    vars:
+      operation: generate_cert

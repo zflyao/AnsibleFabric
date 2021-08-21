@@ -1,0 +1,111 @@
+---
+- name: 将入盟组织 MSP 目录同步到创世组织的 peer0 机器
+  copy:
+    src: "{{ env_src }}/crypto-config/{{ item }}Organizations/{{ item~'_domain' }}"
+    dest: "{{ cli_home }}/tools/crypto-config/{{ item }}Organizations/{{ item~'_domain' }}"
+  loop: >
+    {% if own_orderer %}
+    [ 'peer', 'orderer' ]
+    {% else %}
+    [ 'peer' ]
+    {% endif %}
+
+- name: 创建 addition{{ add_orgid }}-artifacts-{{ccname}} 目录
+  file:
+    path: "{{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: "upload configtx.yaml of addition {{ add_orgid }}"
+  template:
+    src: addition_configtx.yaml.j2
+    dest: "{{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}/configtx.yaml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: find number of orderer in crypto
+  find:
+    paths: "{{ cli_home }}/tools/crypto-config/ordererOrganizations/{{ join_orderer_domain}}/orderers"
+    file_type: directory
+  register: find_crypto
+
+- name: "上传 add_{{ ccname }}_MSP{{ add_orgid }}.sh"
+  template:
+    src: "membership.j2"
+    dest: "{{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}/add_{{ ccname }}_MSP{{ add_orgid }}.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+
+- pause:
+    prompt: "OrdererMSP will add"
+    seconds: 5
+  when: add_orgid|int in (2,3,11,12)
+
+- name: "perform add_{{ ccname }}_MSP{{ add_orgid }}.sh"
+  shell: bash add_{{ ccname }}_MSP{{ add_orgid }}.sh 2
+  args:
+    chdir: "{{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}"
+  register: add_ord_result
+  ignore_errors: yes
+  when: add_orgid|int in (2,3,11,12)
+
+- debug:
+    msg: "{{ add_ord_result.stderr_lines }}"
+  when: add_orgid|int in (2,3,11,12)
+
+- name: rsync the orderer{{ add_orgid }}_update_in_envelope.pb from peer0.org1 to orderer0.ord1
+  command: rsync -e "ssh -i {{ cli_home }}/tools/id_rsa_1024_root" -avz {{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}/orderer{{ add_orgid }}_update_in_envelope.pb root@{{hostvars['orderer0.ord1'].ansible_ssh_host}}:{{ worker_home }}/cli-orderer0.ord1/artifacts
+  delegate_to: peer0.org1
+  when: add_orgid|int in (2,3,11,12)
+
+- name: "Sign the orderer{{ add_orgid }}_update_in_envelope.pb on orderer0.ord1"
+  command: docker exec cli-orderer0.ord1 bash -c "peer channel signconfigtx -f /opt/gopath/src/github.com/hyperledger/fabric/peer/artifacts/orderer{{ add_orgid }}_update_in_envelope.pb"
+  delegate_to: orderer0.ord1
+  register: sign_pb
+  ignore_errors: yes
+  when: add_orgid|int in (2,3,11,12)
+
+- debug:
+    msg: "{{ sign_pb.stderr_lines }}"
+  when: add_orgid|int in (2,3,11,12)  
+
+- name: rsync signed pb from orderer0.ord1 to peer0.org1
+  command: rsync -e "ssh -i {{ cli_home }}/tools/id_rsa_1024_root" -avz root@{{hostvars['orderer0.ord1'].ansible_ssh_host}}:{{ worker_home }}/cli-orderer0.ord1/artifacts/orderer{{ add_orgid }}_update_in_envelope.pb {{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}/signed_orderer{{ add_orgid }}_update_in_envelope.pb 
+  delegate_to: peer0.org1
+  when: add_orgid|int in (2,3,11,12)
+
+- name: Submit the Config Update to add orderermsp
+  command: docker exec cli-{{ inventory_hostname }} bash -c "export FABRIC_CFG_PATH=/home && peer channel update -f /home/addition{{ add_orgid }}-artifacts-{{ccname}}/signed_orderer{{ add_orgid }}_update_in_envelope.pb -c channel{{ ccname }} -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA"
+  register: orderermsp_update
+  ignore_errors: yes
+  when: add_orgid|int in (2,3,11,12)
+
+- debug:
+    msg: "{{ orderermsp_update.stderr_lines }}"
+  when: add_orgid|int in (2,3,11,12)
+
+- pause:
+    seconds: 10
+    prompt: "OrgMSP will add" 
+
+- name: "perform add_{{ ccname }}_MSP{{ add_orgid }}.sh"
+  shell: bash add_{{ ccname }}_MSP{{ add_orgid }}.sh 1
+  args:
+    chdir: "{{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}"
+  register: add_org_result
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ add_org_result.stderr_lines }}"  
+
+- name: Submit the Config Update to add orgmsp
+  command: docker exec cli-{{ inventory_hostname }} bash -c "export FABRIC_CFG_PATH=/home && peer channel update -f /home/addition{{ add_orgid }}-artifacts-{{ccname}}/org{{ add_orgid }}_update_in_envelope.pb -c channel{{ ccname }} -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA"
+  register: orgmsp_update
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ orgmsp_update.stderr_lines }}"

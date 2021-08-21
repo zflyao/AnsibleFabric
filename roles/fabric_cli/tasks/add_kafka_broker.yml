@@ -1,0 +1,11 @@
+- name: Check if cli-{{ inventory_hostname }} is running
+  shell: docker ps --format '{% raw %}{{ .Names }}{% endraw %}' | grep cli-{{ inventory_hostname }}
+- name: Templating add_kafka_broker.sh
+  template:
+    src: add_kafka_broker.sh.j2
+    dest: "{{ work_dir }}/cli-{{ inventory_hostname }}/add_kafka_broker.sh"
+    mode: 0755
+- name: Run script
+  command: ./add_kafka_broker.sh
+  args:
+    chdir: "{{ work_dir }}/cli-{{ inventory_hostname }}"

@@ -1,0 +1,38 @@
+---
+
+- name: backup normal nginx.conf
+  copy:
+    src: "{{ worker_home }}/nginx/conf/nginx.conf"
+    dest: "{{ worker_home }}/nginx/conf/nginx.conf.normal"
+    remote_src: yes
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 上传维护版本nginx.conf
+  template:
+    src: roles/nginx/templates/maintenance.j2
+    dest: "{{ worker_home }}/nginx/conf/nginx.conf"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 测试配置文件
+  shell: "{{ worker_home }}/nginx/sbin/nginx -t"
+  register: nginx_test
+  ignore_errors: true
+
+- debug:
+    msg: "{{nginx_test.stderr_lines}}"
+  ignore_errors: true
+
+- name: 启动 nginx
+  shell: "{{ worker_home }}/nginx/sbin/nginx -s reload"
+  ignore_errors: true
+
+- name: 检查nginx进程
+  shell: ps -ef | grep -v grep | grep nginx
+  register: nginx_process
+  ignore_errors: true
+
+- debug:
+    msg: "{{ nginx_process.stdout_lines }}"
+  ignore_errors: true

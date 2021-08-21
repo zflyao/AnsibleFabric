@@ -1,0 +1,4 @@
+- name: 清除 kafka 数据
+  file:
+    path: "{{ fabric_data }}"
+    state: absent

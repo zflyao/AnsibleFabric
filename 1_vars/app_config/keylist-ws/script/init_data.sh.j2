@@ -1,0 +1,10 @@
+#/bin/bash
+API_IP=127.0.0.1
+API_PORT={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+
+echo "==================================================================="
+echo "Init AssetType to Blockchain"
+curl -i -X POST http://$API_IP:$API_PORT/assetTradingPlatform/assetInvoke/AddAssetTypeInfos \
+  -H "Content-type: application/json" \
+  -H "Accept: application/json" \
+  --data-binary "@init_data.txt"

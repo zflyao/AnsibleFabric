@@ -1,0 +1,274 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+---
+################################################################################
+#
+#   ORGANIZATIONS
+#
+#   This section defines the organizational identities that can be referenced
+#   in the configuration profiles.
+#
+################################################################################
+Organizations:
+{% for each_ord in fabric_genesis_orgs.ords %}
+    - &{{ each_ord }}
+        Name: {{ hostvars['orderer0.'~each_ord]['ord_mspname'] }}
+        ID: {{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}
+        MSPDir: /etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/msp
+        Policies: &{{ each_ord }}Policies
+            Readers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('{{ hostvars['orderer0.'~each_ord]['ord_mspid'] }}.admin')"
+{% endfor %}
+
+{% for each_org in fabric_genesis_orgs.orgs %}
+    - &{{ each_org }}
+        Name: {{ hostvars['peer0.'~each_org]['org_mspname'] }}
+        ID: {{ hostvars['peer0.'~each_org]['org_mspid'] }}
+        MSPDir: /etc/hyperledger/fabric/crypto-config/peerOrganizations/{{ hostvars['peer0.'~each_org]['peer_domain'] }}/msp
+        Policies: &{{ each_org }}Policies
+            Readers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['peer0.'~each_org]['org_mspid'] }}.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('{{ hostvars['peer0.'~each_org]['org_mspid'] }}.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('{{ hostvars['peer0.'~each_org]['org_mspid'] }}.admin')"
+        AnchorPeers:
+            - Host: peer0.{{ hostvars['peer0.'~each_org]['peer_domain'] }}
+              Port: 7051
+            - Host: peer1.{{ hostvars['peer1.'~each_org]['peer_domain'] }}
+              Port: 7051  
+{% endfor %}
+
+################################################################################
+#
+#   CAPABILITIES
+#
+#   This section defines the capabilities of fabric network. This is a new
+#   concept as of v1.1.0 and should not be utilized in mixed networks with
+#   v1.0.x peers and orderers.  Capabilities define features which must be
+#   present in a fabric binary for that binary to safely participate in the
+#   fabric network.  For instance, if a new MSP type is added, newer binaries
+#   might recognize and validate the signatures from this type, while older
+#   binaries without this support would be unable to validate those
+#   transactions.  This could lead to different versions of the fabric binaries
+#   having different world states.  Instead, defining a capability for a channel
+#   informs those binaries without this capability that they must cease
+#   processing transactions until they have been upgraded.  For v1.0.x if any
+#   capabilities are defined (including a map with all capabilities turned off)
+#   then the v1.0.x peer will deliberately crash.
+#
+################################################################################
+Capabilities:
+    Channel: &ChannelCapabilities
+        V1_4_3: true
+        V1_3: false
+        V1_1: false
+    Orderer: &OrdererCapabilities
+        V1_4_2: true
+        V1_1: false
+    Application: &ApplicationCapabilities
+        V1_4_2: true
+        V1_3: false
+        V1_2: false
+        V1_1: false
+
+################################################################################
+#
+#   APPLICATION
+#
+#   This section defines the values to encode into a config transaction or
+#   genesis block for application-related parameters.
+#
+################################################################################
+Application: &ApplicationDefaults
+    ACLs: &ACLsDefault
+        lscc/ChaincodeExists: /Channel/Application/Readers
+        lscc/GetDeploymentSpec: /Channel/Application/Readers
+        lscc/GetChaincodeData: /Channel/Application/Readers
+        lscc/GetInstantiatedChaincodes: /Channel/Application/Readers
+        qscc/GetChainInfo: /Channel/Application/Readers
+        qscc/GetBlockByNumber: /Channel/Application/Readers
+        qscc/GetBlockByHash: /Channel/Application/Readers
+        qscc/GetTransactionByID: /Channel/Application/Readers
+        qscc/GetBlockByTxID: /Channel/Application/Readers
+        cscc/GetConfigBlock: /Channel/Application/Readers
+        cscc/GetConfigTree: /Channel/Application/Readers
+        cscc/SimulateConfigTreeUpdate: /Channel/Application/Readers
+        peer/Propose: /Channel/Application/Writers
+        peer/ChaincodeToChaincode: /Channel/Application/Readers
+        event/Block: /Channel/Application/Readers
+        event/FilteredBlock: /Channel/Application/Readers
+    Organizations:
+    Policies: &ApplicationDefaultPolicies
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "ANY Admins"
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+################################################################################
+#
+#   ORDERER
+#
+#   This section defines the values to encode into a config transaction or
+#   genesis block for orderer related parameters.
+#
+################################################################################
+Orderer: &OrdererDefaults
+    OrdererType: {{ fabric_orderer_type }}
+    Addresses:
+{% for each_ord in fabric_genesis_orgs.ords %}
+{% if groups[each_ord~'_orderer'] | length == 1 %}
+        - orderer0.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}:7050
+{% else %}
+{% for number in range(groups[each_ord~'_orderer'] | length) %}
+        - orderer{{ number }}.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}:700{{ number + 1 }}
+{% endfor %}
+{% endif %}
+{% endfor %}
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 100
+        AbsoluteMaxBytes: 98 MB
+        PreferredMaxBytes: 512 KB
+    MaxChannels: 0
+{% if fabric_orderer_type == 'kafka' %}
+    Kafka:
+        Brokers:
+{% if kafka_hosts | length == 1 %}
+            - broker.{{ kafka_domain |default('kafka') }}:9092
+{% else %}{% for number in range(kafka_hosts | length) %}
+            - broker{{ number + 1 }}.{{ kafka_domain |default('kafka') }}:900{{ number + 1 }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+{% if fabric_orderer_type == 'etcdraft' %}
+    # EtcdRaft defines configuration which must be set when the "etcdraft"
+    # orderertype is chosen.
+    EtcdRaft:
+        Consenters:
+{% for each_ord in fabric_genesis_orgs.ords %}
+{% if groups[each_ord~'_orderer'] | length == 1 %}
+            - Host: orderer0.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}
+              Port: 7050
+              ClientTLSCert: /etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/orderers/orderer0.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/tls/server.crt
+              ServerTLSCert: /etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/orderers/orderer0.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/tls/server.crt
+{% else %}
+{% for number in range(groups[each_ord~'_orderer'] | length) %}
+            - Host: orderer{{ number }}.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}
+              Port: 700{{ number + 1 }}
+              ClientTLSCert: /etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/orderers/orderer{{ number }}.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/tls/server.crt
+              ServerTLSCert: /etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/orderers/orderer{{ number }}.{{ hostvars['orderer0.'~each_ord]['orderer_domain'] }}/tls/server.crt
+{% endfor %}
+{% endif %}
+{% endfor %}
+        Options:
+            TickInterval: 500ms
+            ElectionTick: 10
+            HeartbeatTick: 1
+            MaxInflightBlocks: 5
+            SnapshotIntervalSize: 20 MB
+{% endif %}
+
+    # Organizations lists the orgs participating on the orderer side of the
+    # network.
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "ANY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+    Capabilities:
+        <<: *OrdererCapabilities
+
+################################################################################
+#
+#   CHANNEL
+#
+#   This section defines the values to encode into a config transaction or
+#   genesis block for channel related parameters.
+#
+################################################################################
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+################################################################################
+#
+#   PROFILES
+#
+#   Different configuration profiles may be encoded here to be specified as
+#   parameters to the configtxgen tool. The profiles which specify consortiums
+#   are to be used for generating the orderer genesis block. With the correct
+#   consortium members defined in the orderer genesis block, channel creation
+#   requests may be generated with only the org member names and a consortium
+#   name.
+#
+################################################################################
+Profiles:
+    TwoOrgsOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+{% for each_ord in fabric_genesis_orgs.ords %}
+                - *{{ each_ord }}
+{% endfor %}
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+{% for each_org in fabric_genesis_orgs.orgs %}
+                    - *{{ each_org }}
+{% endfor %}
+
+{% for each_channel in fabric_channels | dict2items %}
+    {{ each_channel.key }}:
+        Consortium: SampleConsortium
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+{# {% for each_org in each_channel.value.genesis_orgs %}
+                - *{{ each_org }}
+{% endfor %} #}
+{% for each_org in fabric_genesis_orgs.orgs %}
+                - *{{ each_org }}
+{% endfor %}
+{% endfor %}

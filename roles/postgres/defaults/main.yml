@@ -1,0 +1,14 @@
+---
+
+worker_home: "/home/{{ worker_user }}"
+worker_group: blockchain
+worker_user: blockchain
+pg_dir: "{{ worker_home }}/postgresql"
+pg_data: "{{ pg_dir }}/data"
+db_port: 5432
+pg_cpuser: pgrepuser
+pg_cppw: pgreppass
+pg_pw: Pgadmin
+db_user: pg_user
+db_pass: pg_user123
+domain: "org{{ org_id }}.{{ fabric_domain }}"

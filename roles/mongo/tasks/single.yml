@@ -1,0 +1,59 @@
+---
+
+- name: 拷贝 single 配置文件
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ worker_home }}/mongodb/conf/{{ item }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+  with_items:
+    - single.conf
+    - creat_admin.js
+    - creat_user.js
+
+- name: get pid of mongodb
+  shell: pidof mongod
+  register: pidof_mongod
+  ignore_errors: yes
+
+- name: 启动 mongodb 单机模式
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongod -f {{worker_home}}/mongodb/conf/single.conf"
+  args:
+    chdir: "{{worker_home}}/mongodb/bin"
+  ignore_errors: yes
+  register: mongo_start
+  when: pidof_mongod.rc == 1
+- debug:
+    msg: "{{ mongo_start.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 等待 MongoDB port 监听
+  wait_for:
+    port: "{{ mongodb_single_port | default ('27010') }}"
+    delay: 5
+
+- name: 创建 admin 用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_single_port | default ('27010') }} admin --quiet {{ worker_home }}/mongodb/conf/creat_admin.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_admin
+  ignore_errors: yes
+- debug:
+    msg: "{{ add_mongo_admin.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 创建普通用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_single_port | default ('27010') }} mongo --quiet {{ worker_home }}/mongodb/conf/creat_user.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_user
+  ignore_errors: yes
+- debug:
+    msg: "{{ add_mongo_user.stdout_lines }}"
+  ignore_errors: yes

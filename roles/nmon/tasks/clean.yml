@@ -1,0 +1,5 @@
+---
+- name: 清除 nmon 监控数据
+  file:
+    path: "/tmp/nmon_output"
+    state: absent

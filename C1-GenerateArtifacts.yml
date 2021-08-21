@@ -1,0 +1,33 @@
+# 该剧本用于生成创世（genesis）配置区块及通道的 tx 文件
+# *通过命令行指定变量 org 为生成区块的组织
+#
+# 可以通过 tag 指定需要生成的文件：
+#     genesis：只生成创世区块
+#     channel：只生成通道创世块的 tx 文件
+#     anchor：只生成通道上的组织 org 的锚节点 tx 文件
+#
+# 可以通过命令行指定变量 channel 为要生成的通道配置文件。注意此变量的值必须已在 all.yml 的 fabric_channels 中定义。
+#
+# 示例：
+# 1. 生成所有文件：
+#    ansible-playbook -e org=bar C1-GenerateArtifacts.yml
+# 2. 只生成指定通道名称的 tx 文件：
+#    ansible-playbook -t channel -e channel=channelfoo -e org=bar C1-GenerateArtifacts.yml
+---
+
+- name: 生成创世区块和/或通道配置文件
+  hosts: peer0.org1
+  gather_facts: false
+  vars_files:
+    - 1_vars/common.yml  
+  tasks:
+  - name: 通过命令行提供变量 channel 时，覆盖 fabric_channels 变量
+    set_fact:
+      fabric_channels:
+        "{{ channel }}": "{{ fabric_channels[channel] }}"
+    when: channel is defined
+
+  - import_role:
+      name: fabric_cli
+    vars:
+      operation: generate_artifacts

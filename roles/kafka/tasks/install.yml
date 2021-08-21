@@ -1,0 +1,55 @@
+---
+- name: 创建kafka工作目录
+  file:
+    path: "{{ kafka_home }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- import_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ fabric_harbor_project }}"
+    image_name: fabric-kafka
+    image_tag: "{{ fabric_thirdparty_version }}"
+
+- name: 上传kafka-compose solo版配置文件
+  template:
+    src: solo.j2
+    dest: "{{ kafka_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: cluster_count|int == 1
+
+- name: 上传kafka-compose配置文件
+  template: 
+    src: kafka.j2
+    dest: "{{ kafka_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: cluster_count|int > 1
+
+- name: 本地创建新的 Kafka TLS 服务端和客户端证书
+  import_tasks: tlscerts.yml
+  delegate_to: 127.0.0.1
+  run_once: true
+  tags: [ never, cert ]
+
+- name: 上传 KafkaTLS 证书
+  unarchive:
+    src: "{{ kafka_certs_dir }}/kafkaTLSserver-{{ kafka_domain |default('kafka') }}.tar.gz"
+    dest: "{{ kafka_home }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 上传 topic 脚本
+  template:
+    src: "kafkatopic.j2"
+    dest: "{{ kafka_home }}/topic.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+  tags:
+    - topic
+
+- include_tasks: start.yml

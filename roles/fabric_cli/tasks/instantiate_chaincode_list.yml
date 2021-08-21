@@ -1,0 +1,12 @@
+---
+- name: 在通道 {{ channel }} 上初始化链码
+  include_tasks: instantiate_chaincode.yml
+  vars:
+    ccname: "{{ cc.name }}"
+    version: "{{ cc.version }}"
+    lang: "{{ standard_cc[cc.name]['lang'] }}"
+    initargs: "{{ standard_cc[cc.name]['initargs'] | to_json }}"
+    policy: "{{ cc.policy | default(default_policy, true) }}"
+  loop: "{{ chaincode_list }}"
+  loop_control:
+    loop_var: cc

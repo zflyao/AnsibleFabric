@@ -1,0 +1,9 @@
+---
+
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+
+nginx_home: "{{ worker_home }}/nginx"
+
+nginx_http: 8080

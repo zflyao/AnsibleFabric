@@ -1,0 +1,84 @@
+---
+
+- name: njcb-elc.out 特殊处理
+  command: mv {{ fabric_home }}/tools/njcb-elc.out {{ fabric_home }}/tools/elc.out
+
+- name: 加入 channelnjcb-elc
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 1 0 channelnjcb-elc
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ JoinChannel.stderr_lines }}"
+
+- name: "安装 elc.out chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 2 0 elc.out
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ InstallCc.stderr_lines }}"
+
+- name: "peer1加入 channelnjcb-elc"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 1 1 channelnjcb-elc
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel_peer1
+  ignore_errors: yes
+  when: find_crypto.matched == 2
+
+- debug:
+    msg: "{{ JoinChannel_peer1.stderr_lines }}"
+  when: find_crypto.matched == 2
+
+- name: "peer1安装 elc.out chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 2 1 elc.out
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc_peer1
+  ignore_errors: yes
+  when: find_crypto.matched == 2
+
+- debug:
+    msg: "{{ InstallCc_peer1.stderr_lines }}"
+  when: find_crypto.matched == 2
+
+- name: peer2加入 channelnjcb-elc
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 1 2 channelnjcb-elc
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel_peer2
+  ignore_errors: yes
+  when: find_crypto.matched == 3
+
+- debug:
+    msg: "{{ JoinChannel_peer2.stderr_lines }}"
+  when: find_crypto.matched == 3
+
+- name: "peer2安装 elc.out chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 2 2 elc.out
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc_peer2
+  ignore_errors: yes
+  when: find_crypto.matched == 3
+
+- debug:
+    msg: "{{ InstallCc_peer2.stderr_lines }}"
+  when: find_crypto.matched == 3

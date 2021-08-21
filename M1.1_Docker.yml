@@ -1,0 +1,17 @@
+# deploy docker
+# Use the -e input variable, eg：inventory=org1_docker
+###----------以下参数无需配置--------###
+# harbor: true 是否配置harbor，如为false，以下参数无效
+# harbor_domain: hub.finrunchain.com
+# harbor_ip: 10.10.255.171
+# harbor_user: admin
+# harbor_passwd: Harbor12345
+###--------------------------------###
+---
+
+- name: deploy docker
+  hosts: "{{ inventory|default('*_unique') }}"
+  gather_facts: false
+  roles:
+    - role: docker
+

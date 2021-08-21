@@ -1,0 +1,22 @@
+- name: 判断本地 channel-artifacts/anchor-{{ channel_name }}-{{ org_mspname }}_tx.pb 是否已存在
+  stat:
+    path: "{{ playbook_dir }}/{{ env_src }}/channel-artifacts/anchor-{{ channel_name }}-{{ org_mspname }}_tx.pb"
+  delegate_to: localhost
+  register: anchor_exist
+  tags: anchor
+
+- name: 生成通道 {{ channel_name }} 的锚节点 tx 文件
+  command: docker exec cli-{{ inventory_hostname }} /bin/bash /home/generate_artifacts.sh anchor {{ channel_name }} {{ org_mspname }}
+  register: generate_anchor
+  args:
+    chdir: "{{ cli_home }}/tools"
+  tags: anchor
+  when: not anchor_exist.stat.exists
+
+- name: 下载通道 {{ channel_name }} 的锚节点 tx 文件到本地
+  fetch:
+    src: "{{ cli_home }}/tools/channel-artifacts/anchor-{{ channel_name }}-{{ org_mspname }}_tx.pb"
+    dest: "{{ playbook_dir }}/{{ env_src }}/channel-artifacts/"
+    flat: yes
+  tags: anchor
+  when: not anchor_exist.stat.exists

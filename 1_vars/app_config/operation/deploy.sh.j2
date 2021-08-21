@@ -1,0 +1,38 @@
+#!/bin/bash
+export JAVA_HOME=/usr/java/jdk{{ java_version }}
+export PATH=$JAVA_HOME/bin:$PATH
+
+APP_NAME={{ app_name }}
+ROOT_PATH={{ work_dir }}
+JAR=$(ls $ROOT_PATH/jeecg-boot-module-system*.jar)
+STDOUT=$ROOT_PATH/logs/stdout.log
+{% if healthz['type'] == 'file' %}
+APP_LOG=$ROOT_PATH/{{ healthz['file'] }}
+{% endif %}
+JVM_ARGS="{{ instance_vars.jvm_args | default(jvm_args) }}"
+
+stop_java() {
+  PID=$(ps -ef | grep $ROOT_PATH | grep -v grep | awk '{ print $2 }')
+  if [ -n "$PID" ]; then
+    kill $PID
+  fi
+}
+
+start_java() {
+  mkdir -p $ROOT_PATH/logs
+  if [ -f $APP_LOG ]; then
+    mv $APP_LOG $APP_LOG-$(date +%Y%m%d-%H%M%S)
+  fi
+  cd $ROOT_PATH/bin
+{% if instance_vars.supervisor is defined and instance_vars.supervisor %}
+  java $JVM_ARGS -Djava.security.egd=file:/dev/./urandom -Droot.path=$ROOT_PATH -jar $JAR >$STDOUT 2>&1
+{% else %}
+  nohup java $JVM_ARGS -Djava.security.egd=file:/dev/./urandom -Droot.path=$ROOT_PATH -jar $JAR >$STDOUT 2>&1 &
+{% endif %}
+}
+
+case $1 in
+  stop)   stop_java  ;;
+  start)  start_java ;;
+  *)      echo '请指定命令：stop 或 start'; exit 1 ;;
+esac

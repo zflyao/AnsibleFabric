@@ -1,0 +1,6 @@
+---
+- name: 上传 nmon 二进制文件
+  copy:
+    src: nmon-{{ ansible_os_family }}-{{ ansible_architecture }}
+    dest: /usr/local/bin/nmon
+    mode: 755

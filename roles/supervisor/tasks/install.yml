@@ -1,0 +1,40 @@
+---
+- name: 通过 yum 安装 supervisor
+  yum:
+    name:
+    - python-meld3
+    - supervisor
+  when: yum
+
+- name: 上传 RPM 包
+  copy:
+    src: "{{ playbook_dir }}/summary_files/supervisor/{{ item }}"
+    dest: "{{ summary_dir }}/tools/supervisor/"
+  loop:
+  - python-meld3
+  - supervisor
+  when: not yum
+
+- name: 通过 RPM 安装 Supervisor
+  command: "rpm -ivh --force *.rpm"
+  args:
+    chdir: "{{ summary_dir }}/tools/supervisor"
+    warn: false
+  when: not yum
+
+- name: 创建配置和日志目录
+  file:
+    path: "{{ item }}"
+    state: directory
+  loop:
+  - "{{ supervisor_dir }}"
+  - "{{ supervisor_log_path }}"
+  - "{{ supervisor_conf_dir }}"
+
+
+- name: 生成主配置文件
+  template:
+    src: supervisord.conf.j2
+    dest: "{{ supervisor_dir }}/supervisord.conf"
+
+- import_tasks: start.yml

@@ -1,0 +1,103 @@
+#!/bin/bash
+#author by hoke
+#Adding an Org to a Channel, this script will leverage cli-{{ inventory_hostname }} container, make sure the container is RUNNING PLS.
+
+dockersh="docker exec cli-{{ inventory_hostname }} bash -c"
+container_path=/home/addition{{ add_orgid }}-artifacts-{{ccname}}
+host_path={{ cli_home }}/tools/addition{{ add_orgid }}-artifacts-{{ccname}}
+
+{% if add_orgid|int in (2,3,11,12) %}
+function ORDERERMSP () {
+##########################################orderer###########################################
+# print out the Orderer{{ add_orgid }}MSP-specific configuration material in JSON
+$dockersh "configtxgen -printOrg Orderer{{ add_orgid }}MSP -configPath $container_path > $container_path/orderer{{ add_orgid }}.json"
+
+# fetch block
+$dockersh "export FABRIC_CFG_PATH=/home && peer channel fetch config $container_path/config_block.pb -o \$ORDERER_ADDRESS -c {{ standard_cc[ccname].channel }} --tls --cafile \$ORDERER_CA"
+
+# decode block
+$dockersh "configtxlator proto_decode --input $container_path/config_block.pb --type common.Block | jq .data.data[0].payload.data.config > $container_path/config.json"
+
+# Add the Org{{ add_orgid }} Crypto Material
+jq -s '.[0] * {"channel_group":{"groups":{"Orderer":{"groups":{"OrdererOrg{{ add_orgid }}":.[1]}}}}}' $host_path/config.json $host_path/orderer{{ add_orgid }}.json > $host_path/modified_ord_conf.json
+
+# add OrdererAddresses {{ find_crypto.matched }}
+jq '.channel_group.values.OrdererAddresses.value.addresses=[.channel_group.values.OrdererAddresses.value.addresses[],"orderer0.{{ orderer_domain }}:7050"]' $host_path/modified_ord_conf.json > $host_path/modified_ordaddr_conf.json
+{% if find_crypto.matched == 2 %}
+jq '.channel_group.values.OrdererAddresses.value.addresses=[.channel_group.values.OrdererAddresses.value.addresses[],"orderer1.{{ orderer_domain }}:7050"]' $host_path/modified_ordaddr_conf.json > $host_path/modified_ordaddr_conf.json
+{% elif find_crypto.matched > 2 %}}
+ jq '.channel_group.values.OrdererAddresses.value.addresses=[.channel_group.values.OrdererAddresses.value.addresses[],"orderer2.{{ orderer_domain }}:7050"]' $host_path/modified_ordaddr_conf.json > $host_path/modified_ordaddr_conf.json
+{% endif %}
+
+# encode json to pb
+$dockersh "configtxlator proto_encode --input $container_path/config.json --type common.Config --output $container_path/config.pb"
+$dockersh "configtxlator proto_encode --input $container_path/modified_ordaddr_conf.json --type common.Config --output $container_path/modified_ordaddr_conf.pb"
+
+# calculate the delta between these two config protobufs
+$dockersh "configtxlator compute_update --channel_id {{ standard_cc[ccname].channel }} --original $container_path/config.pb --updated $container_path/modified_ordaddr_conf.pb --output $container_path/orderer{{ add_orgid }}_update.pb"
+
+# decode pb to json
+$dockersh "configtxlator proto_decode --input $container_path/orderer{{ add_orgid }}_update.pb --type common.ConfigUpdate | jq . > $container_path/orderer{{ add_orgid }}_update.json"
+
+# wrap in an envelope message
+echo '{"payload":{"header":{"channel_header":{"channel_id":"{{ standard_cc[ccname].channel }}", "type":2}},"data":{"config_update":'$(cat $host_path/orderer{{ add_orgid }}_update.json)'}}}' | jq . > $host_path/orderer{{ add_orgid }}_update_in_envelope.json
+
+# convert final update object into the fully fledged protobuf format that Fabric requires
+$dockersh "configtxlator proto_encode --input $container_path/orderer{{ add_orgid }}_update_in_envelope.json --type common.Envelope --output $container_path/orderer{{ add_orgid }}_update_in_envelope.pb"
+
+# Sign the Config Update
+#docker exec cli-orderer0.ord1 bash -c "peer channel signconfigtx -f /opt/gopath/src/github.com/hyperledger/fabric/peer/artifacts/orderer{{ add_orgid }}_update_in_envelope.pb"
+
+# Submit the Config Update
+#$dockersh "export FABRIC_CFG_PATH=/home && peer channel update -f $container_path/orderer{{ add_orgid }}_update_in_envelope.pb -c {{ standard_cc[ccname].channel }} -o \$ORDERER_ADDRESS --tls --cafile \$ORDERER_CA"
+}
+{% endif %}
+
+function ORGMSP () {
+###########################################peer#############################################
+# print out the Org{{ add_orgid }}-specific configuration material in JSON
+$dockersh "configtxgen -printOrg Org{{ add_orgid }}MSP -configPath $container_path > $container_path/org{{ add_orgid }}.json"
+
+# fetch block
+$dockersh "export FABRIC_CFG_PATH=/home && peer channel fetch config $container_path/config_block.pb -o \$ORDERER_ADDRESS -c {{ standard_cc[ccname].channel }} --tls --cafile \$ORDERER_CA"
+
+# decode block
+$dockersh "configtxlator proto_decode --input $container_path/config_block.pb --type common.Block | jq .data.data[0].payload.data.config > $container_path/config.json"
+
+# Add the Org{{ add_orgid }} Crypto Material
+jq -s '.[0] * {"channel_group":{"groups":{"Application":{"groups":{"Org{{ add_orgid }}MSP":.[1]}}}}}' $host_path/config.json $host_path/org{{ add_orgid }}.json > $host_path/modified_config.json
+
+# encode json to pb
+$dockersh "configtxlator proto_encode --input $container_path/config.json --type common.Config --output $container_path/config.pb"
+$dockersh "configtxlator proto_encode --input $container_path/modified_config.json --type common.Config --output $container_path/modified_config.pb"
+
+# calculate the delta between these two config protobufs
+$dockersh "configtxlator compute_update --channel_id {{ standard_cc[ccname].channel }} --original $container_path/config.pb --updated $container_path/modified_config.pb --output $container_path/org{{ add_orgid }}_update.pb"
+
+# decode pb to json
+$dockersh "configtxlator proto_decode --input $container_path/org{{ add_orgid }}_update.pb --type common.ConfigUpdate | jq . > $container_path/org{{ add_orgid }}_update.json"
+
+# wrap in an envelope message
+echo '{"payload":{"header":{"channel_header":{"channel_id":"{{ standard_cc[ccname].channel }}", "type":2}},"data":{"config_update":'$(cat $host_path/org{{ add_orgid }}_update.json)'}}}' | jq . > $host_path/org{{ add_orgid }}_update_in_envelope.json
+
+# convert final update object into the fully fledged protobuf format that Fabric requires
+$dockersh "configtxlator proto_encode --input $container_path/org{{ add_orgid }}_update_in_envelope.json --type common.Envelope --output $container_path/org{{ add_orgid }}_update_in_envelope.pb"
+
+# Sign the Config Update
+#docker exec cli-orderer0.ord1 bash -c "peer channel signconfigtx -f /opt/gopath/src/github.com/hyperledger/fabric/peer/artifacts/org{{ add_orgid }}_update_in_envelope.pb"
+
+# Submit the Config Update
+#$dockersh "export FABRIC_CFG_PATH=/home && peer channel update -f $container_path/org{{ add_orgid }}_update_in_envelope.pb -c {{ standard_cc[ccname].channel }} -o \$ORDERER_ADDRESS --tls --cafile \$ORDERER_CA"
+}
+
+if [ $1 -eq 1 ]; then
+    ORGMSP
+{% if add_orgid|int in (2,3,11,12) %}
+elif [ $1 -eq 2 ]; then
+    ORDERERMSP
+{% endif %}
+else
+    echo "Command Error  add ORGMSP      eg: $0 1"
+    echo "Command Error  add ORDERERMSP  eg: $0 2"
+    exit
+fi

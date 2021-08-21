@@ -1,0 +1,7 @@
+- name: 创建输出目录
+  file:
+    path: /tmp/nmon_output
+    state: directory
+
+- name: 开始监控
+  shell: nmon -s 10 -c 10 -f -t -r ZJ-nmonreport -m /tmp/nmon_output

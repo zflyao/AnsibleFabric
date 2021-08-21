@@ -1,0 +1,24 @@
+---
+- name: 上传 nginx 源码包
+  unarchive:
+    src: "{{ playbook_dir }}/summary_files/nginx/nginx-1.14.0.tar.gz"
+    dest: "{{ worker_home }}/summary/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 执行预编译
+  shell: ./configure --prefix={{ nginx_home }} --with-http_stub_status_module --with-http_ssl_module --with-http_gzip_static_module --with-http_realip_module
+  args:
+    chdir:  "{{ worker_home }}/summary/tools/nginx-1.14.0"
+
+- name: 执行编译安装
+  shell: make && make install
+  args:
+    chdir:  "{{ worker_home }}/summary/tools/nginx-1.14.0"
+
+- name: 更改nginx属主
+  file:
+    path: "{{ nginx_home }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes

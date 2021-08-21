@@ -1,0 +1,22 @@
+---
+
+- name: 确保docker开机自启
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: 检测是否已存在镜像 {{ harbor_domain }}/{{ harbor_project }}/{{ image_name }}:{{ image_tag }}
+  shell: docker images --format "{% raw %}{{ .Repository }}:{{ .Tag }}{% endraw %}" | grep "{{ harbor_domain }}/{{ harbor_project }}/{{ image_name }}:{{ image_tag }}"
+  register: image_exists
+  ignore_errors: yes
+
+- import_tasks: load_image.yml
+  when:
+  - image_exists.rc != 0
+  - not harbor | bool
+
+- import_tasks: pull_image.yml
+  when:
+  - image_exists.rc != 0
+  - harbor | bool

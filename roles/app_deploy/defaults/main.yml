@@ -1,0 +1,3 @@
+server_id: "{{ inventory_hostname | regex_search('\\d+') }}"
+supervisor_conf: "{{ worker_home }}/supervisor/supervisord.conf"
+app_id: "{{ app_name }}-{{ instance_name }}"

@@ -1,0 +1,218 @@
+---
+
+- name: 创建 tools 目录
+  file:
+    path: "{{ fabric_home }}/tools"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 检查hosts中是否有orderer
+  shell: cat /etc/hosts | grep orderer
+  register: check_hosts
+  ignore_errors: yes
+
+- debug:
+    msg: "hosts 未绑定 orderer"
+  when: check_hosts.rc != 0
+
+- name: hosts 绑定 orderer
+  lineinfile: 
+    path: /etc/hosts
+    line: "{{ hostvars[item].ansible_ssh_host }} {{ hostvars[item].inventory_hostname }}.{{ fabric_domain }}"
+  loop: "{{ ownorderer }}"
+  when: check_hosts.rc != 0
+
+- name: 检查hosts中是否有peer
+  shell: cat /etc/hosts | grep peer
+  register: check_hosts_peer
+  ignore_errors: yes
+
+- debug:
+    msg: "hosts 未绑定 peer"
+  when: check_hosts_peer.rc != 0
+
+- name: hosts 绑定 peer
+  lineinfile: 
+    path: /etc/hosts
+    line: "{{ hostvars[item].ansible_ssh_host }} {{ hostvars[item].inventory_hostname }}.{{ fabric_domain }}"
+  loop: "{{ ownpeer }}"
+  when: check_hosts_peer.rc != 0
+
+- name: find number of peer in crypto
+  find:
+    paths: "{{ fabric_home }}/tools/crypto-config/ordererOrganizations/ord1.{{ fabric_domain }}/orderers"
+    file_type: directory
+  register: find_crypto
+  
+- name: "copy {{ ccname | default ('fft') }} CC"
+  copy:
+    src: "chaincode/{{ ccname | default ('fft') }}.out"
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: elc-njcb.out 特殊处理
+  command: mv {{ fabric_home }}/tools/njcb-elc.out {{ fabric_home }}/tools/elc.out
+  when: ccname == "njcb-elc" and ccname is defined
+
+- name: "上传 worktools{{ ccname | default ('fft') }}.sh"
+  template:
+    src: worktools.j2
+    dest: "{{ fabric_home }}/tools/worktools{{ ccname | default ('fft') }}.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+
+- pause:
+    seconds: 10
+
+- name: "创建 channel{{ ccname | default ('fft') }}"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 1
+  register: CreateChannel
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  ignore_errors: yes
+
+- debug: 
+    msg: "{{ CreateChannel.stdout_lines }}"
+  when: CreateChannel.rc == 0
+
+- debug:
+    msg: "{{ CreateChannel.stderr_lines }}"
+  when: CreateChannel.rc > 0
+
+- name: "更新 channel{{ ccname | default ('fft') }}锚节点"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 2 1
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: UpdateAnchorPeers
+  ignore_errors: yes
+
+- debug: 
+    msg: "{{ UpdateAnchorPeers.stdout_lines }}"
+  when: UpdateAnchorPeers.rc == 0
+
+- debug:
+    msg: "{{ UpdateAnchorPeers.stderr_lines }}"
+  when: UpdateAnchorPeers.rc > 0
+
+- name: "加入 channel{{ ccname | default ('fft') }}"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 3 0
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel
+  ignore_errors: yes
+
+- debug: 
+    msg: "{{ JoinChannel.stdout_lines }}"
+  when: JoinChannel.rc == 0
+
+- debug:
+    msg: "{{ JoinChannel.stderr_lines }}"
+  when: JoinChannel.rc > 0
+
+- name: "安装 {{ ccname | default ('fft') }} chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 4 0
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc
+  ignore_errors: yes
+
+- debug: 
+    msg: "{{ InstallCc.stdout_lines }}"
+  when: InstallCc.rc == 0
+
+- debug:
+    msg: "{{ InstallCc.stderr_lines }}"
+  when: InstallCc.rc > 0
+
+- name: 实例化 chaincode
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 5 0 {{ channel_add[ccname|default('fft')].ccver }}
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: Instantiate
+  ignore_errors: yes
+  
+- debug: 
+    msg: "{{ Instantiate.stdout_lines }}"
+  when: Instantiate.rc == 0
+  
+- debug:
+    msg: "{{ Instantiate.stderr_lines }}"
+  when: Instantiate.rc > 0
+
+- name: "peer1加入 channel{{ ccname | default ('fft') }}"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 3 1
+  args:
+   chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel_peer1
+  ignore_errors: yes
+  when: find_crypto.matched >= 2
+
+- debug: 
+    msg: "{{ JoinChannel_peer1.stdout_lines }}"
+  when: find_crypto.matched >= 2
+  
+- name: "peer1安装 {{ ccname | default ('fft') }} chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 4 1
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc_peer1
+  ignore_errors: yes
+  when: find_crypto.matched >= 2
+
+- debug: 
+    msg: "{{ InstallCc_peer1.stdout_lines }}"
+  when: find_crypto.matched >= 2
+  
+- name: "peer2加入 channel{{ ccname | default ('fft') }}"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 3 2
+  args:
+   chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel_peer1
+  ignore_errors: yes
+  when: find_crypto.matched >= 3
+
+- debug:
+    msg: "{{ JoinChannel_peer1.stdout_lines }}"
+  when: find_crypto.matched >= 3
+
+- name: "peer2安装 {{ ccname | default ('fft') }} chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools{{ ccname | default ('fft') }}.sh 4 2
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc_peer1
+  ignore_errors: yes
+  when: find_crypto.matched >= 3
+
+- debug:
+    msg: "{{ InstallCc_peer1.stdout_lines }}"
+  when: find_crypto.matched >= 3
+
+- name: "拉取channel{{ ccname | default ('fft') }}.block"
+  fetch:
+    src: "{{ fabric_home }}/tools/channel{{ ccname | default ('fft') }}.block"
+    dest: "{{ env_src }}/"
+    flat: yes
+  tags: test  

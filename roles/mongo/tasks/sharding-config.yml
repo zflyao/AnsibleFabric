@@ -1,0 +1,82 @@
+---
+
+- name: 确保生成dbpath路径
+  file:
+    path: "{{ config_dbpath }}"
+    state: directory
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 拷贝 config 配置文件
+  template:
+    src: sharding-config.conf.j2
+    dest: "{{ worker_home }}/mongodb/conf/sharding-config.conf"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+
+#- name: get pid of mongodb
+#  shell: pidof mongod
+#  register: pidof_mongod_config
+#  ignore_errors: yes
+
+- name: 启动 mongo-config 集群
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongod -f {{worker_home}}/mongodb/conf/sharding-config.conf"
+  args:
+    chdir: "{{worker_home}}/mongodb/bin"
+  ignore_errors: yes
+  register: mongo_config_start
+#  when: pidof_mongod_config.rc == 1
+
+- debug:
+    msg: "{{ mongo_config_start.stdout_lines }}"
+  ignore_errors: yes
+#  when: pidof_mongod_config.rc == 1
+
+- name: 等待 mongo-config port 监听
+  wait_for:
+    port: "{{ mongodb_config_port | default ('27019') }}"
+    delay: 15
+
+- name: 检查 mongo-config 设置状态
+  shell: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_config_port | default ('27019') }} --quiet --eval 'rs.status().ok'"
+  register: config_rs_ok
+- debug:
+    msg: "{{ config_rs_ok.stdout_lines }}"
+
+- name: 等待10秒
+  wait_for:
+    timeout: 10
+
+- name: 在mongo_conf1上传初始化脚本
+  template:
+    src: sharding-config.js.j2
+    dest: "{{ worker_home }}/mongodb/conf/sharding-config.js"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_user }}"
+  when: inventory_hostname == "mongo_conf1"
+
+- name: 在mongo_conf1上执行初始化脚本
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_config_port | default ('27019') }} --quiet {{ worker_home }}/mongodb/conf/sharding-config.js"
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_conf1"
+
+- name: 等待 mongo-config port 监听
+  wait_for:
+    port: "{{ mongodb_config_port | default ('27019') }}"
+    delay: 15
+
+- name: 检查 mongo-config 成员设置
+  shell: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_config_port | default ('27019') }} --quiet --eval 'rs.status().members'"
+  register: config_rs_members
+  ignore_errors: yes
+- debug:
+    msg: "{{ config_rs_members.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 30秒检查回显
+  wait_for:
+    timeout: 30

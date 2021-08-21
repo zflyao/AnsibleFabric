@@ -1,0 +1,23 @@
+# 请通过命令行变量 org 指定组织的名称，如 org=org1。
+# 本 playbook 将轮询 fabric_channels 中的所有通道
+# 只有当指定组织为通道的 genesis_orgs 的第一个元素时才会执行创建通道的操作
+# 注意：
+# 请确保 all.yml 中存在全局变量 fabric_channels，该变量指定了整个 fabric 网络中运行的 channel 列表
+# 只有在系统通道 Consortiums 中存在的组织才有权限创建新通道，即 fabric_genesis_orgs.orgs 列表之一
+
+---
+
+- name: Create fabric channels
+  hosts: peer0.org1
+  gather_facts: false
+  vars:
+    operation: create_channel
+  tasks:
+  - include_role:
+      name: fabric_cli
+    vars:
+      channel_name: "{{ channelitem.key }}"
+    loop: "{{ fabric_channels | dict2items }}"
+    loop_control:
+      loop_var: channelitem
+    # when: channelitem.value.genesis_orgs.0 == org

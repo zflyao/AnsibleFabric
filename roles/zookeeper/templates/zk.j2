@@ -1,0 +1,28 @@
+version: '2'
+
+services:
+  {{ inventory_hostname }}:
+    image: {{ harbor_domain }}/{{ fabric_harbor_project }}/fabric-zookeeper:{{ fabric_thirdparty_version }}
+    container_name: {{ inventory_hostname }}
+    restart: always
+    environment:
+      ZOO_MY_ID: {{ id }}
+      ZOO_SERVERS: {% for each_zk in groups['zookeeper'] %}server.{{ loop.index }}={{ each_zk }}:288{{ loop.index }}:388{{ loop.index }} {% endfor %}
+
+    ports:
+      - 218{{ id }}:2181
+      - 288{{ id }}:288{{ id }}
+      - 388{{ id }}:388{{ id }}
+    volumes:
+      - /etc/localtime:/etc/localtime
+      - ./mount/data:/data
+      - ./mount/datalog:/datalog
+    extra_hosts:
+{% for each_zk in groups['zookeeper'] %}
+      {{ each_zk }}: {{ hostvars[each_zk]['ansible_ssh_host'] }}
+{% endfor %}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"

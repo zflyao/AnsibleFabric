@@ -1,0 +1,15 @@
+#!/bin/bash
+# author by hoke
+# {{ ccname |default('fft') }}探活脚本
+
+clear
+echo -e "\e[1;32m+----------------- channel{{ ccname |default('fft') }} {{ api_port }} 探活结果 ------------------+"
+{% if ccname == "njcb-asset" or ccname == "rc-asset" or ccname == "sucai" %}
+curl http://127.0.0.1:{{ api_port }}/assetTradingPlatform/KeepAlive
+{% elif ccname == "ctfu" %}
+curl --head -H "Authorization:Basic cGVlcmZpbnRlY2g6Y3RmdQ==" http://127.0.0.1:{{ api_port }}/trade/keepalive
+{% else %}
+curl -I http://127.0.0.1:{{ api_port }}/factor/keepaliveQuery
+{% endif %}
+echo
+echo -e "+------------------------- \033[41;37m探活结束\033[0m\e[1;32m ----------------------------+\033[0m"

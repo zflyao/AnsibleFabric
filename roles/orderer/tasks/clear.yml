@@ -1,0 +1,13 @@
+---
+- name: 清除数据目录
+  file:
+    path: "{{ fabric_data }}"
+    state: absent
+
+- name: 清除 genesis.block 和 kafkaTLSclient
+  file:
+    path: "{{ fabric_home }}"
+    state: absent
+  # loop:
+  # - genesis.block
+  # - kafkaTLSclient

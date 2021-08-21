@@ -1,0 +1,13 @@
+#!/bin/bash
+
+CHANNEL_NAME=$1
+
+CHAINCODE_NAME={{ ccname }}
+CHAINCODE_VERSION={{ version }}
+CHAINCODE_LANG={{ lang }}
+CHAINCODE_INITARGS={{ initargs }}
+CHAINCODE_POLICY="{{ policy | default(default_policy, true) }}"
+
+peer chaincode instantiate \
+  -n $CHAINCODE_NAME -l $CHAINCODE_LANG -v $CHAINCODE_VERSION -c "$CHAINCODE_INITARGS" -P "$CHAINCODE_POLICY" \
+  -C $CHANNEL_NAME -o $ORDERER_ADDRESS  --tls --cafile $ORDERER_CA

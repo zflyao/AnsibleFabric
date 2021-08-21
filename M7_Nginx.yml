@@ -1,0 +1,40 @@
+# nginx deploy usage
+# Use the -e input variable, eg："inventory=web0 nginx_http="
+# nginx_http 默认监听端口：8080
+
+# --- Added by Jiwanglai
+# 使用 tag 'appconfig' 时需通过环境变量指定 app_name / instance_name
+# 如：
+# ansible-playbook -t appconfig -e app_name=voucher-view -e instance_name=youxin -e inventory=web0.org1 M7_Nginx.yml
+---
+
+- name: nginx
+  hosts: "{{ inventory }}"
+  gather_facts: false
+  tasks:
+  - name: Include app vars file
+    include_vars:
+      file: vars/apps.yml
+      name: apps
+    tags: always
+
+  - name: Set common variables 
+    set_fact:
+      config_files: "{{ apps[app_name]['config_files'] }}"
+      listen_port: "{{ instances[instance_name][app_name]['listen_port'] }}"
+    tags:
+    - never
+    - appconfig
+
+  - name: Set nginx variables when config nginx apps
+    set_fact:
+      ngx_root: "{{ worker_home }}/{{ instance_name }}/{{ app_name }}"
+      ngx_log: "{{ apps[app_name]['ngx_log'] }}"
+      ngx_upstreams: "{{ apps[app_name]['ngx_upstreams'] }}"
+      ngx_locations: "{{ apps[app_name]['ngx_locations'] }}"
+    tags:
+    - never
+    - appconfig
+
+  - import_role:
+      name: nginx

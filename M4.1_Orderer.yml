@@ -1,0 +1,22 @@
+# orderer deploy usage
+# Use the -e input variable, eg："inventory=orderer0.ord1 kafka_lb="
+# variable:
+# kafka_lb: kafka负载均衡的IP，如kafka与orderer在同一台宿主机，自动填入本机ip
+# harbor: 是否使用私库，默认启用，当harbor=false时，改用镜像上传，需在 summary_files 中准备镜像文件
+# fabric_deploy_ver: this option is require. fabric version support: 1.0, 1.1, 1.4.0, the default vaule is 1.4.0
+# kafka_domain: defaut is `finblockchain.cn` 
+# fabric_domain 默认值 finblockchain.cn
+# peer_domain: Define customize PeerOrgs domain, default is "org{{ org_id }}.{{ fabric_domain }}" . If you set this variable, the `fabric_domain` will be override
+# orderer_domain: Define customize OrdererOrgs domain, default is "ord{{ ord_id }}.{{ fabric_domain }}". If you set this variable, the `fabric_domain` will be override
+# env_src: specify synchronization path, the default is "{{inventory_file | basename}}"
+---
+
+- name: orderer
+  hosts: "{{ inventory | default('*_orderer') }}"
+  #gather_facts: false
+  vars_files:
+    - 1_vars/common.yml  
+  vars:
+    operation: install
+  roles:
+    - orderer

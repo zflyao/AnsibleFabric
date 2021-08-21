@@ -1,0 +1,29 @@
+# - pause:
+#     seconds: 10
+#     prompt: "Waiting for running"
+
+- name:  upload createMQ.sh
+  template:
+    src: createMQ.sh
+    dest: "{{ rabbitmq_home }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+    backup: yes
+  when: rabbitmq0 == inventory_hostname
+  tags:
+    - rebuild
+
+# - name: init
+#   become: yes
+#   become_user: "{{ worker_user }}"
+#   shell: sh {{ rabbitmq_home }}/init.sh
+#   register: init
+#   when: inventory_hostname == rabbitmq0
+#   tags:
+#     - rebuild
+# - debug:
+#     msg: "{{init.stdout_lines}}"
+#   when: inventory_hostname == rabbitmq0
+#   tags:
+#     - rebuild

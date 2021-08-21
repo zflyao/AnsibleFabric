@@ -1,0 +1,55 @@
+##application config
+spring.application.name=Entrust
+spring.application.version=2.1.0
+##database config
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+#mongodb
+hbcc.core.properties.mongodb.addresses={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+hbcc.core.properties.mongodb.database={{ instance_vars.mongodb_database }}
+#cache
+hbcc.cache.mongo.uri={{ mongodb_url }}/{{ instance_vars.mongodb_cache_database }}
+hbcc.cache.mongo.database={{ instance_vars.mongodb_cache_database }}
+#businessLine
+hbcc.core.properties.businessLine=LC
+##message queue
+#hbcc.core.properties.mqConfigProperties.rabbitMQConfig.username=loc
+#hbcc.core.properties.mqConfigProperties.rabbitMQConfig.password=loc
+#hbcc.core.properties.mqConfigProperties.rabbitMQConfig.addresses=mq0.org11.finblockchain.cn:5672,mq1.org11.finblockchain.cn:5672
+#hbcc.core.properties.mqConfigProperties.rabbitMQConfig.sysQueueName=sys_channelfft
+#hbcc.core.properties.mqConfigProperties.rabbitMQConfig.sysMsgPrefix=user_alias
+hbcc.core.properties.mqConfigProperties.queue.queueName=Runtf_channelfft
+##blockchian config
+hbcc.core.properties.blockChain.connection.pool.host={{ instances[instance_vars.api_instance]['platform-hfclient-sdk-ws']['domain'] | default(instances[instance_name]['platform-hfclient-sdk-ws']['domain']) }}
+hbcc.core.properties.blockChain.connection.pool.port={{ instances[instance_vars.api_instance]['platform-hfclient-sdk-ws']['listen_port'] | default(instances[instance_name]['platform-hfclient-sdk-ws']['listen_port']) }}
+hbcc.core.properties.blockChain.connection.pool.forceRefresh=false
+hbcc.core.properties.blockChain.connection.channel={{ instance_vars.channel }}
+hbcc.core.properties.blockChain.connection.enableSSL=false
+hbcc.core.properties.blockChain.connection.supportedProtocols=TLSv1
+hbcc.core.properties.blockChain.connection.enableConnectionReuse=false
+#cloud
+hbcc.core.properties.cloudIntranetAddr=http://{{ instances['hbcc']['hbcc-cloud-starter']['public_addr'] }}
+#http
+hoperun.http.sessionTimeoutMinutes=30
+hoperun.http.maximumSessions=1
+#pressimage
+elc-application.pressImage.english={{ work_dir }}/config/English.png
+elc-application.pressImage.englishLg={{ work_dir }}/config/English_lg.png
+elc-application.pressImage.chinese={{ work_dir }}/config/Chinese.png
+elc-application.pressImage.chineseLg={{ work_dir }}/config/Chinese_lg.png
+#statemachine
+hoperun.plugins.statemachine.umlFilePath1={{ work_dir }}/config/establish-offer.uml
+hoperun.plugins.statemachine.umlFilePath2={{ work_dir }}/config/credit.uml
+hoperun.plugins.statemachine.umlFilePath3={{ work_dir }}/config/entrust-notice.uml
+hoperun.plugins.statemachine.umlFilePath4={{ work_dir }}/config/entrust-doc.uml
+#log
+logging.config={{ work_dir }}/config/logback-spring.xml
+#json
+hbcc.ugm.rolePath={{ work_dir }}/config/init_default_roles.json
+#chain partnerChain config
+hbcc.core.properties.myChain.name={{ eco_name }}/{{ instance_vars.channel }}
+hbcc.core.properties.myChain.ip={{ instances[instance_vars.api_instance]['platform-hfclient-sdk-ws']['domain'] }}
+hbcc.core.properties.myChain.port={{ instances[instance_vars.api_instance]['platform-hfclient-sdk-ws']['listen_port'] }}
+hbcc.core.properties.myChain.agent=true
+hbcc.core.properties.ccbPhysicalNid=59e208034ff2393f226e1734

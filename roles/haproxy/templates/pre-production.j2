@@ -1,0 +1,169 @@
+#---------------------------------------------------------------------
+# pre production configuration for Blockchain
+# 准生产环境
+#---------------------------------------------------------------------
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local0 info
+ 
+#    chroot      /var/lib/haproxy
+#    pidfile     {{fabric_home}}/haproxy.pid
+    maxconn    65535 
+#    user        haproxy
+#    group       haproxy
+    daemon
+ 
+    # turn on stats unix socket
+    stats socket /var/lib/haproxy/stats
+ 
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+    mode                    tcp
+    log                     global
+    option                  tcplog
+    option                  dontlognull
+   #option http-server-close
+    option tcpka
+#    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    30m
+    timeout queue           30m
+    timeout connect         30m
+    timeout client          30m
+    timeout server          30m
+    timeout client-fin      30m
+    timeout tunnel          1d
+    timeout server-fin      30m
+    timeout tarpit          900s
+#    timeout connect         365d
+#    timeout client          365d
+#    timeout server          365d
+ 
+    timeout http-keep-alive 900s
+#    timeout check           30m
+    maxconn                 65535
+#---------------------------------------------------------------------
+#统计界面
+#---------------------------------------------------------------------
+listen stats
+    mode http
+    bind 0.0.0.0:1080
+    stats enable
+    stats hide-version
+    stats uri     /haproxy
+    stats realm   Haproxy\ Statistics
+    stats auth    admin:admin
+    stats admin if TRUE
+#---------------------------------------------------------------------
+# org1-kafka
+#---------------------------------------------------------------------
+frontend kafka1_front
+    bind *:9001
+    mode tcp
+    default_backend kafka1_backend
+ 
+backend kafka1_backend
+    default-server inter 10m weight 30
+    server kafka1_back1 {{ hostvars['kafka1'].ansible_ssh_host }}:9001 maxconn 4000
+ 
+frontend kafka2_front
+    bind *:9002
+    mode tcp
+    default_backend kafka2_backend
+ 
+backend kafka2_backend
+    default-server inter 10m weight 30
+    server kafka2_back1 {{ hostvars['kafka2'].ansible_ssh_host }}:9002 maxconn 2000
+ 
+frontend kafka3_front
+    bind *:9003
+    mode tcp
+    default_backend kafka3_backend
+ 
+backend kafka3_backend
+    default-server inter 10m weight 30
+    server kafka3_back1 {{ hostvars['kafka3'].ansible_ssh_host }}:9003 maxconn 2000
+#---------------------------------------------------------------------
+# org1-orderer
+#---------------------------------------------------------------------
+frontend org1-orderer0
+    bind *:7001
+    mode tcp
+    default_backend org1-orderer0
+ 
+backend org1-orderer0
+    default-server inter 10m weight 30
+    server orderer0 {{ hostvars['org1_orderer0'].ansible_ssh_host }}:7001 maxconn 2000
+
+frontend org1-orderer1
+    bind *:7002
+    mode tcp
+    default_backend org1-orderer1
+ 
+backend org1-orderer1
+    default-server inter 10m weight 30
+    server orderer1 {{ hostvars['org1_orderer1'].ansible_ssh_host }}:7002 maxconn 2000
+#---------------------------------------------------------------------
+# org11-api-cluster                                                             
+#---------------------------------------------------------------------
+frontend org11-fft-api
+    bind *:5511
+    default_backend org11-fft-api
+ 
+backend org11-fft-api
+    balance     roundrobin
+#    mode http
+#    option forwardfor
+#    source  0.0.0.0 usesrc clientip
+    option httpchk HEAD /factor/keepaliveQuery HTTP/1.0
+    http-check expect status 200
+    default-server inter 10m weight 10
+    server fft-api0 {{ hostvars['org11_api0'].ansible_ssh_host }}:5555 check maxconn 2000
+    server fft-api1 {{ hostvars['org11_api1'].ansible_ssh_host }}:5555 check maxconn 2000
+
+frontend org11-factor-api
+    bind *:9911
+    mode tcp
+    default_backend org11-factor-api
+ 
+backend org11-factor-api
+    balance     roundrobin
+    option  httpchk HEAD /factor/keepaliveQuery HTTP/1.0
+    http-check expect status 200
+    default-server inter 10m weight 10
+    server factor-api0 {{ hostvars['org11_api0'].ansible_ssh_host }}:9999 check maxconn 2000
+    server factor-api1 {{ hostvars['org11_api1'].ansible_ssh_host }}:9999 check maxconn 2000
+#---------------------------------------------------------------------
+# org12-api-cluster                                                             
+#---------------------------------------------------------------------
+frontend org12-fft-api
+    bind *:5512
+    default_backend org12-fft-api
+ 
+backend org12-fft-api
+#    balance     roundrobin
+#    mode http
+#    option forwardfor
+#    source  0.0.0.0 usesrc clientip
+    option httpchk HEAD /factor/keepaliveQuery HTTP/1.0
+    http-check expect status 200
+    default-server inter 10m weight 10
+    server fft-api0 {{ hostvars['org12_api0'].ansible_ssh_host }}:5555 check maxconn 2000
+
+frontend org12-factor-api
+    bind *:9912
+    mode tcp
+    default_backend org12-factor-api
+ 
+backend org12-factor-api
+#    balance     roundrobin
+    option  httpchk HEAD /factor/keepaliveQuery HTTP/1.0
+    http-check expect status 200
+    default-server inter 10m weight 10
+    server factor-api0 {{ hostvars['org12_api0'].ansible_ssh_host }}:9999 check maxconn 2000

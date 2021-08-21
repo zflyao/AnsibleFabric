@@ -1,0 +1,17 @@
+---
+kafka_certs_dir: "{{ playbook_dir }}/{{ env_src }}/kafka"
+
+# Docker
+harbor: true
+harbor_domain: hub.finrunchain.com
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+fabric_home: "{{ worker_home }}/{{ inventory_hostname | regex_replace('(.*\\d+).(.*\\d+)$','\\1_\\2') }}"
+fabric_data: "{{ fabric_home }}/mount"
+
+# Fabric common
+fabric_harbor_project: fabric-guomi/hyperledger
+cc_harbor_project: fabric-guomi/runchain
+fabric_deploy_ver: 1.4.9sm
+fabric_minor_ver: "{{ fabric_deploy_ver.split('.')[1] }}"

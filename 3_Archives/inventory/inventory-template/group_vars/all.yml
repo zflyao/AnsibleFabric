@@ -1,0 +1,141 @@
+---
+# Env related
+inventory_dir_basename: "{{ inventory_dir | basename }}"
+# Environment Type, such as: demo, test, sit, prod ...
+env_type: "{{ inventory_dir_basename.split('-')[1] | lower }}"
+# Ansible local file directory
+env_src: "environment/{{ inventory_dir_basename }}"
+
+# Connection
+ansible_ssh_user: root
+ansible_ssh_private_key_file: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+ansible_ssh_common_args: '-o ConnectTimeout=60s'
+
+# System
+worker_group: blockchain
+worker_gid: 1500
+worker_user: blockchain
+worker_uid: 1500
+worker_home: "/home/{{ worker_user }}"
+summary_dir: "{{ worker_home }}/summary"
+yum: true
+sysctl:
+  - name: net.ipv4.ip_forward
+    value: '1'
+
+# Docker
+docker_version: 17.06.1.ce-1.el7.centos
+harbor: true
+harbor_domain: hub.finrunchain.com
+harbor_user: ansible
+harbor_passwd: Ansible123
+
+# Fabric common
+fabric_harbor_project: fabric-guomi/hyperledger
+cc_harbor_project: fabric-guomi/runchain
+fabric_deploy_ver: amd64-1.4.4sm
+fabric_base_version: amd64-0.4.18sm
+fabric_thirdparty_version: 0.4.18
+fabric_domain: finblockchain.cn
+
+fabric_minor_ver: "{{ fabric_deploy_ver.split('.')[1] }}"
+fabric_home: "{{ worker_home }}/{{ inventory_hostname }}"
+fabric_data: "/data/{{ inventory_hostname }}"
+
+# Fabric Orderer & Genesis
+fabric_orderer_type: kafka
+fabric_genesis_orgs:
+  ords:
+  - ord1
+  orgs:
+  - org1
+
+# Fabric channels and chaincodes
+fabric_consortium:
+- org1
+
+fabric_channels:
+  CHANNELNAME:
+    orgs:
+    - org1
+    chaincodes:
+    - name: CC_NAME
+      version: CC_VERSION
+
+# Kafka
+kafka_domain:
+
+# Network - 定义机构之间使用私网（private）还是公网（public）连接
+# private: Peer --> Orderer --> Kafka 均通过私网连接；（账本3.0）Platform 之间通过私网连接
+conn_mode: private
+# public: 无 Orderer 的入盟机构，Peer --> Orderer 通过公网；有 Orderer 的入盟机构，Peer --> Orderer 仍是私网，但 Orderer --> Kafka 通过公网
+#conn_mode: public
+
+# JDK
+java_major_version: 8
+java_update_version: 91
+
+# Platform (ledger3.0 only)
+platform:
+- id: pid001
+  name: pid001
+  description: DF Platform Runtime
+  scheme: http
+  host: platform.org1.{{ fabric_domain }}
+  port: 4001
+  fabric_id: org1
+- id: pid002
+  name: pid002
+  description: Voucher Platform Runtime
+  scheme: http
+  host: platform.org1.{{ fabric_domain }}
+  port: 4000
+  fabric_id: org1
+- id: pid003
+  name: pid003
+  description: RDF Platform Runtime
+  scheme: http
+  host: platform.org1.{{ fabric_domain }}
+  port: 4002
+  fabric_id: org1
+
+# RSA key pair (ledger 3.0 only)
+rsa_pri_0: |
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCqkb0w5gBHwWF7
+Se1PzZLt+tuI0G3JgbHj+PHRUxL5p/bPcZ3g28bFvqLEIaouYA9rHajBkTDf9mlj
+Qn56Do0yjN2gxx/vC0F8iFYE/wl0H1wX9vqGgHNE6+Oua/96/RRciQaFAClYc1VC
+UorNr7Dhv4qheY4ZJPUOZStz1gzry6nsycclIU5LAAaBgWMKSuT5COVkEmAXTVw3
+1rPYApZMxGB3EJ5xMvvih7XcTpQNfeHM+RrZr8jz/MarfK0yuwEvR25bpXhg42wd
+xmDf+7F0evq5SzZSEmEMGb/zSAz9M68vz9eqyDNLa5+ioy0WYRlEeEwI58+U2e8z
+N6TLE9a7AgMBAAECggEAKW8dtjMo/kVLmNdsfmZBuu2lRqbbBIgs3mQq2d6ETYEv
+w1SmNWkt7/tPLrW+0WUkWbDqvZq3dLA3CZWtg5jlU9JERDoa18a0MbwsqSoK8dps
+VKX6VZH+bk+fD0/Mz+OKfrAKlWRkpsfdfi7u6Og036HX20Hb8t+3Z7fLxmfI275G
+pr1pJa6iiXIGo5q0Z0+T2JtYg6juVBrwfo7Z732zxwcLVCTOUqhhJqg1VnPX+Rgs
+1yHypIw8kG6pINlevUCo3cgxq/ApN0a9wKu06drZ7UPkSYk+RDhRuc5sD7corsUt
+rSrmUHFVVCv0ZRa2RE6EJnYmLvYAOUkFk9spccBPgQKBgQD3AXlOtgY5vzSPLjeC
+0FmVwQk7kAWWm/F7Lrmxr6BXCuJMLmFdnrwoYMyHPWUpyXbRxGzCG7zpMXLSzs8t
+WEsNu5J41i8gzuEgACQtL/7Nm9LUpSBYYDF12u8n76qLlDRfNi/9t72pskh+QGgn
+syzWt8B0XOopnI8+cZYWQAyKfQKBgQCwx75VZLBud2VScV6WWkvzwB2/dNSqp7ht
+nlmXaRjeLy86LrJNDUZlJXjd2rY9jBC+fBbd6XK6P+oGIyJQZ/Ra5/u4vDwcyhkd
+bX9g4WQARkvCCSTS7BzFVjaXh40pUqXVeBJJr8Q0murnejyjsuLSSvHJLn8TldwT
+WOdTKNhzlwKBgQDM4F0VC2f4h/75b/U9PMHBs/6Ld/caqDhQ2z3NAwZ0jCON2r6J
+37rjpv6egi8hzOgQL+Oh0U4NAiXicwVm8CA4wMdKESXACbizSUq4bGHlewURufEt
+PIRp4/GQZ3tHEOOrwY9m2/umAKmehp+dpkFfy8QHAHZ9k01BFwfNZszAJQKBgGhR
+1v3pZzwo9P/Lqveq3Xs/+c4LkZwLUYhOk6wH9wbWbVY2TD2wAcSaclLpR/XV++OM
+sqnNo0hJgz6P6SXt0oL6ts7zNb3/fQaioTJ4j1yiHv6oCrT1ZJ0HHTwaX7Ds9rOc
+IZ6ePHiWmtxyg+pOHA/g7gG8kHzsSGyaYBfw2JqNAoGATWJVdJ1xtMOZM3p3Nwbg
+9bOJ3CzfwuwZPNgkSdL24mjewD3XtpQuSNAIPDppVmqRzrQE/4gpVEkbs9vmzl+7
+d/gYutXWKi1pzMDmSPVekV4ahcvw2A/+cVIvRWpzaqyddzGudSYpA/UKjk1KWHbW
+eugnJiPPRedcWuWDtMCdEo8=
+-----END PRIVATE KEY-----
+rsa_pub_0: |
+-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqpG9MOYAR8Fhe0ntT82S
+7frbiNBtyYGx4/jx0VMS+af2z3Gd4NvGxb6ixCGqLmAPax2owZEw3/ZpY0J+eg6N
+MozdoMcf7wtBfIhWBP8JdB9cF/b6hoBzROvjrmv/ev0UXIkGhQApWHNVQlKKza+w
+4b+KoXmOGST1DmUrc9YM68up7MnHJSFOSwAGgYFjCkrk+QjlZBJgF01cN9az2AKW
+TMRgdxCecTL74oe13E6UDX3hzPka2a/I8/zGq3ytMrsBL0duW6V4YONsHcZg3/ux
+dHr6uUs2UhJhDBm/80gM/TOvL8/XqsgzS2ufoqMtFmEZRHhMCOfPlNnvMzekyxPW
+uwIDAQAB
+-----END PUBLIC KEY-----

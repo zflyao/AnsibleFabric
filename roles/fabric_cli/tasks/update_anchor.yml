@@ -1,0 +1,25 @@
+---
+# - name: 检查通道 {{ channel_name }} 上是否已添加过组织 {{ org_mspname }} 的锚节点
+#   command: >
+#     docker exec cli-peer0.{{ fabric_channels[channel_name]['genesis_orgs'][0] }}
+#     /home/peer_channel.sh check {{ channel_name }} {{ org_mspname }}
+#   register: checkreturn
+#   ignore_errors: yes
+- name: 检查通道 {{ channel_name }} 上是否已添加过组织 {{ org_mspname }} 的锚节点
+  command: >
+    docker exec cli-peer0.{{ fabric_genesis_orgs['orgs'][0] }}
+    /home/peer_channel.sh check {{ channel_name }} {{ org_mspname }}
+  register: checkreturn
+  ignore_errors: yes
+
+- name: 上传组织 {{ org_mspname }} 在 {{ channel_name }} 上的锚节点配置块
+  copy:
+    src: "{{ env_src }}/channel-artifacts/anchor-{{ channel_name }}-{{ org_mspname }}_tx.pb"
+    dest: "{{ cli_home }}/tools/channel-artifacts/"
+
+- name: 更新通道 {{ channel_name }} 上组织 {{ org_mspname }} 的锚节点
+  command: >
+    docker exec cli-peer0.{{ fabric_genesis_orgs['orgs'][0] }}
+    /home/peer_channel.sh update {{ channel_name }} anchor-{{ channel_name }}-{{ org_mspname }}_tx.pb
+  # delegate_to: peer0.{{ fabric_channels[channel_name]['genesis_orgs'][0] }}
+  when: checkreturn.rc != 0

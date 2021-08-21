@@ -1,0 +1,6 @@
+---
+- name: 检测 fabric_cli 是否正在运行
+  import_tasks: check_cli.yml
+  when: (operation != "install_tools" and operation != "upload_cert")
+
+- import_tasks: "{{ operation }}.yml"

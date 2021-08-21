@@ -1,0 +1,13 @@
+- name: Get actual config file's name
+  find:
+    paths: "{{ work_dir }}/{{ src_path | dirname }}"
+    patterns: "{{ pattern }}"
+    file_type: any
+  register: configfile
+
+- name: Link actual config file to templated file
+  file:
+    path: "{{ configfile.files[0]['path'] }}"
+    src: "{{ work_dir }}/{{ src_path }}"
+    state: link
+    force: yes

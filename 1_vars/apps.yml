@@ -1,0 +1,686 @@
+---
+
+### Platform
+platform-service-runtime-ws:
+  description: 平台服务
+  app_type: docker
+  docker_image_project: platform
+  docker_image_name: platform-service
+  sub_directories: [ 'config', 'logs', 'tmp' ]
+  config_files:
+  - path: config/application.yml
+  - path: config/rsa_pri_0.pem
+    from_var: rsa_pri_0
+  - path: config/rsa_pub_0.pem
+    from_var: rsa_pub_0
+  healthz:
+    type: file
+    file: logs/platform.log
+    search_regex: is running
+
+### Trade
+keylist-ws:
+  description: keylist
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  sub_directories: [ 'config', 'logs', 'script' ]
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: script/keysync.sh
+    executable: true
+  - path: script/keysync.txt
+  - path: script/key_list_header.yaml
+  - path: script/init_data.sh
+    executable: true
+  - path: script/init_data.txt
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/out.log
+    search_regex: Application \'keylist-service\' is running
+   
+voucher-ws:
+  description: 权证后端服务
+  app_type: java
+  java_version: 1.8.0_91
+  main_class: com.runchain.voucher.ws.Launcher
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: config/yytest.jks
+    unchanged: true
+  - path: config/trust.jks
+    unchanged: true
+  - path: config/rsa_pri_0.pem
+    from_var: rsa_pri_0
+  - path: config/rsa_pub_0.pem
+    from_var: rsa_pub_0
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/voucher.log
+    search_regex: is running
+
+voucher-view:
+  description: 权证前端
+  app_type: nginx
+  config_files:
+  - path: config.js
+    link_pattern: 'config-*'
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'voucher', format: 'main' }
+  ngx_upstreams:
+  - app_name: voucher-ws
+    lb_mode: ip_hash
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: ^/api/(swagger-ui.html|webjars|swagger-resources|v2)
+    modifier: '~'
+    config: 'rewrite ^/api/(.*)$ /$1 break;'
+    proxy_pass: 'http://voucher-ws'
+    description: "added for yonyou test (Contact: 束正梁)"
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: 'http://voucher-ws'
+  - uri: /downloads/
+    modifier:
+    config: |
+      root {{ worker_home }}/downloads;
+      rewrite ^/downloads/(.*)$ /$1 break;
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+domestic-factoring-ws:
+  description: 国内保理后端服务
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.runchain.qkl.factoring.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: config/rsa_pri_0.pem
+    from_var: rsa_pri_0
+  - path: config/rsa_pub_0.pem
+    from_var: rsa_pub_0
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/factoring.log
+    search_regex: is running
+
+factoring-portal:
+  description: 国内保理前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'factoring', format: 'main' }
+  ngx_upstreams:
+  - app_name: domestic-factoring-ws
+    lb_mode: ip_hash
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: 'http://domestic-factoring-ws'
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+# HBCC
+hbcc-bc-receiver:
+  description:
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.hbcc.receive.Launcher 
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/hbcc-msg-receiver.log
+    search_regex: is running
+
+hbcc-agent-service-ws:
+  description:
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.agent.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/hbcc-agent.log
+    search_regex: is running
+
+hbcc-cloud-service-ws:
+  description:
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.cloud.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/hbcc-cloud.log
+    search_regex: is running
+
+hbcc-cloud-starter:
+  description: 电子保险箱
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/hbcc-cloud.log
+    search_regex: is running
+
+hbcc-oss-service-ws:
+  description: 后台管理
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.mancenter.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/oss.log
+    search_regex: is running
+
+oss-portal:
+  description: 后台管理前端
+  app_type: nginx
+  config_files:
+  - path: config.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'oss', format: 'main' }
+  ngx_upstreams:
+  - app_name: hbcc-oss-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: http://hbcc-oss-service-ws
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+api-plugin-daohe:
+  description:
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.plugins.daohe.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/plugin-daohe.log
+    search_regex: is running
+  
+# 同业金融
+baoli-service-ws:
+  description: 保理后端
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.loc.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/baoli.log
+    search_regex: is running
+
+factor-portal:
+  description: 保理前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'factor', format: 'main' }
+  ngx_upstreams:
+  - app_name: baoli-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: 'http://baoli-service-ws'
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+forfaiting-service-ws:
+  description: 福费廷后端
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.fft.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/fft.log
+    search_regex: is running
+
+forfaiting-portal:
+  description: 福费廷前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'forfaiting', format: 'main' }
+  ngx_upstreams:
+  - app_name: forfaiting-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: 'http://forfaiting-service-ws'
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+entrust-service-ws:
+  description: 代开证elc/进口证ilc
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.elc.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/entrust.log
+    search_regex: is running
+
+entrust-portal:
+  description: 代开证前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'entrust', format: 'main' }
+  ngx_upstreams:
+  - app_name: entrust-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: http://entrust-service-ws
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+logistics-service-ws:
+  description: 保兑仓
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.lf.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/lf.log
+    search_regex: is running
+
+logistics-portal:
+  description: 保兑仓前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'logistics', format: 'main' }
+  ngx_upstreams:
+  - app_name: logistics-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: http://logistics-service-ws
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+relogistics-starter:
+  description: 物流金融
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/rlf.log
+    search_regex: is running
+
+relogistics-portal:
+  description: 物流金融前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'relogistics', format: 'main' }
+  ngx_upstreams:
+  - app_name: relogistics-starter
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: http://relogistics-starter
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+refac-service-ws:
+  description: 再保理后端服务
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.loc.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/refac.log
+    search_regex: is running
+
+refactor-portal:
+  description: 再保理前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'refactor', format: 'main' }
+  ngx_upstreams:
+  - app_name: refac-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/|/config/|/themes/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: http://refac-service-ws
+  - uri: /
+    modifier:
+    config: |
+      if ($request_method ~ (TRACE|TRACK)$) { return 403; }
+      add_header X-Frame-Options 'SAMEORIGIN';
+    index: index.html
+
+xinyongzheng-service-ws:
+  description: 信用证
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.xyz.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/xinyongzheng.log
+    search_regex: is running
+
+xyz-portal:
+  description: 信用证前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'xyz', format: 'main' }
+  ngx_upstreams:
+  - app_name: xinyongzheng-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: 'http://xinyongzheng-service-ws'
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html
+
+zone-service-ws:
+  description: 生态圈
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.portal.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/eco_zone.log
+    search_regex: is running
+  ngx_log: { name: 'zone', format: 'main' }
+  ngx_upstreams:
+  - app_name: zone-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /
+    modifier:
+    config: |
+      if ($request_method ~ (TRACE|TRACK)$) { return 403; }
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection "upgrade";
+    proxy_pass: 'http://zone-service-ws'
+
+portal-service-ws:
+  description:
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  main_class: com.hoperun.qkl.portal.ws.Launcher
+  config_files:
+  - path: config/application_custom.properties
+    versioned: true
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/eco_zone.log
+    search_regex: is running
+
+portal-frontend:
+  description: 门户前端
+  app_type: nginx
+  config_files:
+  - path: config/app.constants.js
+    versioned: true
+  healthz:
+    type: http
+    interface: /index.html
+    timeout: 10
+    status_code: 200
+  ngx_log: { name: 'portal', format: 'main' }
+  ngx_upstreams:
+  - app_name: portal-service-ws
+    lb_mode:
+    max_fails: 2
+    fail_timeout: 10s
+  ngx_locations:
+  - uri: (/app/|/content/)$
+    modifier: '~'
+    config: 'return 404;'
+  - uri: /api
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    proxy_pass: http://portal-service-ws
+  - uri: /
+    modifier:
+    config: 'if ($request_method ~ (TRACE|TRACK)$) { return 403; }'
+    index: index.html

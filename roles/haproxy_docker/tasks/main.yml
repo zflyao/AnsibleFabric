@@ -1,0 +1,55 @@
+---
+
+- name: 载入变量
+  include_vars: "../../../vars/{{ item }}.yml"
+  with_items:
+    - var
+  tags: always
+
+- name: setting fact value
+  set_fact:
+    api_gname: "org{{ org_id }}_peer"
+    ownapi: "{{ groups[api_gname] }}"
+    java_gname: "org{{ org_id }}_java"
+    ownjava: "{{ groups[java_gname] }}"
+    channelport: "{{ channel_add[ccname].port }}"
+  tags: always
+
+- name: 确保docker开机自启
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: 创建工作目录
+  file:
+    path: "{{ fabric_home }}/haproxyconf"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: pull 镜像
+  command: docker pull {{ harbor }}/qklmiddleware/runchain/haproxy:1.8
+
+- name: 上传模板
+  template:
+    src: "{{ fabric_home }}/{{ item.src }}.j2"
+    dest: "{{ fabric_home }}/{{ item.dest }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - { src: 'docker-compose.yml' , dest: 'docker-compose.yml' }
+    - { src: 'haproxy.cfg }}' , dest: 'haproxyconf/haproxy.cfg' }
+
+
+- name: 启动 haproxy 容器
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: /usr/local/bin/docker-compose -f {{ fabric_home }}/docker-compose.yml up -d
+  tags: rebuild
+   
+- name: 检查监听端口
+  shell: netstat -lntp | grep docker
+  register: haproxy_port
+- debug:
+    msg: "{{ haproxy_port.stdout_lines }}"

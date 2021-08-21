@@ -1,0 +1,48 @@
+---
+
+- name: 载入变量
+  include_vars: "../../../vars/{{ item }}.yml"
+  with_items:
+    - var
+    - dns
+    - hosts
+
+- name: 创建 xyz 工作目录
+  file:
+    path: "{{ worker_home }}/xyz_portal"
+    state: directory
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 安装 xyz java
+  unarchive:
+    src: xinyongzheng-service-ws-1.0.0.tar.gz
+    dest: "{{ worker_home }}/xyz_portal"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 确保原 xyz 配置文件干净
+  file:
+    path: "{{ xyz_dir }}/{ item }}"
+    state: absent
+  with_items:
+    - config/application_custom.properties
+    - bin/xyz.sh
+
+- name: 上传 xyz 配置文件和启动脚本
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ xyz_dir }}/{{ item.dest }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - { src: application_custom.properties, dest: config/application_custom.properties }
+    - { src: xyz.sh, dest: bin/xyz.sh }
+
+- name: 确保工作目录属主
+  file:
+    path: "{{ xyz_dir }}"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+    recurse: yes
+    state: directory

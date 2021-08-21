@@ -1,0 +1,27 @@
+---
+- name: Delete old basesoft directory
+  file:
+    path: "{{ summary_dir }}/tools/basesoft"
+    state: absent
+ 
+- name: Copy
+  copy:
+    src: "{{ playbook_dir }}/summary_files/common/basesoft/{{ item }}"
+    dest: "{{ summary_dir }}/tools/basesoft/"
+  loop:
+  - rsync-3.0.9-18.el7.x86_64.rpm
+  - telnet-0.17-64.el7.x86_64.rpm
+  - net-tools-2.0-0.22.20131004git.el7.x86_64.rpm
+
+#- name: upload basesoft
+#  unarchive:
+#    src: summary_files/common/basesoft-{{ ansible_distribution }}-{{ ansible_distribution_version }}.tgz
+#    dest: "{{ summary_dir }}/tools/"
+#    group: "{{ worker_group }}"
+#    owner: "{{ worker_user }}"
+
+- name: install basesoft
+  command: "rpm -ivh --force *.rpm"
+  args:
+    chdir: "{{ summary_dir }}/tools/basesoft"
+    warn: false

@@ -1,0 +1,11 @@
+- name: Set hostname
+  hostname:
+    name: "{{ host_name }}"
+  tags: hostname
+
+- name: Set /etc/hosts
+  lineinfile:
+    path: /etc/hosts
+    regexp: "{{ host_name }}"
+    line: "{{ ansible_ssh_host }} {{ host_name }} {{ inventory_hostname.split('.')[0] }}-{{ org_name }}"
+  tags: hostname

@@ -1,0 +1,31 @@
+version: '2'
+
+services:
+  apiserver:
+    container_name: apiserver_{{ ccname }}
+    image: {{ harbor_domain | default ('hub.finrunchain.com') }}/{{ harbor_project }}/apiserver:latest
+    restart: always
+    volumes:
+    #- ./schema:/opt/apiserver/schema
+    - ./client_sdk.yaml:/opt/apiserver/client_sdk.yaml
+    - {{ fabric_home }}/crypto-config:/opt/apiserver/crypto-config
+    - /etc/localtime:/etc/localtime
+    working_dir: /opt/apiserver
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    command: ./apiserver
+    ports:
+     - {{ channel_add[ccname].port }}:{{ channel_add[ccname].port }}
+    extra_hosts:
+{% for mq_hosts in groups[rabbitmq_gname] %}
+      {{ mq_hosts }}: {{ hostvars[mq_hosts].ansible_ssh_host }}
+{% endfor %}
+{% for peer_hosts in groups[peer_gname] %}
+      {{ peer_hosts }}.{{ fabric_domain }}: {{ hostvars[peer_hosts].ansible_ssh_host }}
+{% endfor %}
+{% for orderer_hosts in groups[orderer_gname] %}
+      {{ orderer_hosts }}.{{ fabric_domain }}: {{ hostvars[orderer_hosts].ansible_ssh_host }}
+{% endfor %}

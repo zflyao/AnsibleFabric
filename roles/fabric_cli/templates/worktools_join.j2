@@ -1,0 +1,99 @@
+#!/bin/bash
+# 功通说明： Org{{org_id}}MSP Channel{{ccname}} 入链脚本
+# 如果要用到TLS 方式,则不能用IP方式,由于证书里面和域名有关
+# 应该在 /etc/hosts 里面添加所有的 域名 和 IP 的映射
+# 该脚本最高支持三线
+
+CORE_PEER_TLS_ENABLED=true
+if [ "$CORE_PEER_TLS_ENABLED" = "true" ]; then
+    ORG1_PEER0="peer0.{{ peer_domain }}:7051"
+    ORG1_PEER1="peer1.{{ peer_domain }}:7051"
+    ORG1_PEER2="peer2.{{ peer_domain }}:7051"
+    ORD1_ORDERER0="orderer0.{{ ordmsp_domain | default(orderer_domain) }}:{{ ordmsp_port |default('7050') }}"
+fi
+CHANNEL_NAME=$3
+CCPACKAGE=$3
+ORGNUM=$2
+ORDERER1_CA="$PWD/crypto-config/ordererOrganizations/{{ ordmsp_domain | default(orderer_domain) }}/orderers/orderer0.{{ ordmsp_domain | default(orderer_domain) }}/msp/tlscacerts/tlsca.{{ ordmsp_domain | default(orderer_domain) }}-cert.pem"
+POLICY="OR  ('Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member','Org5MSP.member','Org6MSP.member','Org7MSP.member','Org8MSP.member','Org9MSP.member','Org10MSP.member','Org11MSP.member','Org12MSP.member','Org13MSP.member','Org14MSP.member','Org15MSP.member','Org16MSP.member','Org17MSP.member','Org18MSP.member','Org19MSP.member','Org20MSP.member','Org21MSP.member','Org22MSP.member','Org23MSP.member','Org24MSP.member','Org25MSP.member','Org26MSP.member','Org27MSP.member','Org28MSP.member','Org29MSP.member','Org30MSP.member','Org31MSP.member','Org32MSP.member','Org33MSP.member','Org34MSP.member','Org35MSP.member','Org36MSP.member','Org37MSP.member','Org38MSP.member','Org39MSP.member','Org40MSP.member','Org41MSP.member','Org42MSP.member','Org43MSP.member','Org44MSP.member','Org45MSP.member','Org46MSP.member','Org47MSP.member','Org48MSP.member','Org49MSP.member','Org50MSP.member','Org51MSP.member','Org52MSP.member','Org53MSP.member','Org54MSP.member','Org55MSP.member','Org56MSP.member','Org57MSP.member','Org58MSP.member','Org59MSP.member','Org60MSP.member','Org61MSP.member','Org62MSP.member','Org63MSP.member','Org64MSP.member','Org65MSP.member','Org66MSP.member','Org67MSP.member','Org68MSP.member','Org69MSP.member','Org70MSP.member','Org71MSP.member','Org72MSP.member','Org73MSP.member','Org74MSP.member','Org75MSP.member','Org76MSP.member','Org77MSP.member','Org78MSP.member','Org79MSP.member','Org80MSP.member','Org81MSP.member','Org82MSP.member','Org83MSP.member','Org84MSP.member','Org85MSP.member','Org86MSP.member','Org87MSP.member','Org88MSP.member','Org89MSP.member','Org90MSP.member','Org91MSP.member','Org92MSP.member','Org93MSP.member','Org94MSP.member','Org95MSP.member','Org96MSP.member','Org97MSP.member','Org98MSP.member','Org99MSP.member','Org100MSP.member','Org101MSP.member','Org102MSP.member','Org103MSP.member','Org104MSP.member','Org105MSP.member','Org106MSP.member','Org107MSP.member','Org108MSP.member','Org109MSP.member','Org110MSP.member','Org111MSP.member','Org112MSP.member','Org113MSP.member','Org114MSP.member','Org115MSP.member','Org116MSP.member','Org117MSP.member','Org118MSP.member','Org119MSP.member','Org120MSP.member','Org121MSP.member','Org122MSP.member','Org123MSP.member','Org124MSP.member','Org125MSP.member','Org126MSP.member','Org127MSP.member','Org128MSP.member','Org129MSP.member','Org130MSP.member','Org131MSP.member','Org132MSP.member','Org133MSP.member','Org134MSP.member','Org135MSP.member','Org136MSP.member','Org137MSP.member','Org138MSP.member','Org139MSP.member','Org140MSP.member','Org141MSP.member','Org142MSP.member','Org143MSP.member','Org144MSP.member','Org145MSP.member','Org146MSP.member','Org147MSP.member','Org148MSP.member','Org149MSP.member','Org150MSP.member','Org151MSP.member','Org152MSP.member','Org153MSP.member','Org154MSP.member','Org155MSP.member','Org156MSP.member','Org157MSP.member','Org158MSP.member','Org159MSP.member','Org160MSP.member','Org161MSP.member','Org162MSP.member','Org163MSP.member','Org164MSP.member','Org165MSP.member','Org166MSP.member','Org167MSP.member','Org168MSP.member','Org169MSP.member','Org170MSP.member','Org171MSP.member','Org172MSP.member','Org173MSP.member','Org174MSP.member','Org175MSP.member','Org176MSP.member','Org177MSP.member','Org178MSP.member','Org179MSP.member','Org180MSP.member','Org181MSP.member','Org182MSP.member','Org183MSP.member','Org184MSP.member','Org185MSP.member','Org186MSP.member','Org187MSP.member','Org188MSP.member','Org189MSP.member','Org190MSP.member','Org191MSP.member','Org192MSP.member','Org193MSP.member','Org194MSP.member','Org195MSP.member','Org196MSP.member','Org197MSP.member','Org198MSP.member','Org199MSP.member','Org200MSP.member')"
+OS_ARCH=$(echo "$(uname -s|tr '[:upper:]' '[:lower:]'|sed 's/mingw64_nt.*/windows/')-$(uname -m | sed 's/x86_64/amd64/g')" | awk '{print tolower($0)}')
+
+export FABRIC_CFG_PATH=$PWD
+
+verifyResult () {
+	if [ $1 -ne 0 ] ; then
+		echo "!!!!!!!!!!!!!!! "$2" !!!!!!!!!!!!!!!!"
+                echo "================== ERROR !!! FAILED to execute "$2" =================="
+		echo
+   		exit 1
+	fi
+}
+
+setGlobals () {
+    PEER=$PWD/cryptotool/$OS_ARCH/bin/peer
+    if [ -f "$PEER" ]; then
+            echo "Using Peer -> $PEER"
+    else
+        echo "miss peer"
+        exit 1
+    fi
+    CORE_PEER_LOCALMSPID="Org{{ org_id }}MSP"
+    CORE_PEER_TLS_ROOTCERT_FILE=$PWD/crypto-config/peerOrganizations/{{ peer_domain }}/peers/peer0.{{ peer_domain }}/tls/ca.crt
+    CORE_PEER_MSPCONFIGPATH=$PWD/crypto-config/peerOrganizations/{{ peer_domain }}/users/Admin@{{ peer_domain }}/msp
+    ORDERADDRESS=$ORD1_ORDERER0
+    ORDERER_CA=$ORDERER1_CA
+    if [ $1 -eq 0 ]; then
+        CORE_PEER_ADDRESS=$ORG1_PEER0
+    elif [ $1 -eq 1 ]; then
+	    CORE_PEER_ADDRESS=$ORG1_PEER1
+	else
+        CORE_PEER_ADDRESS=$ORG1_PEER2
+    fi  
+    export CORE_PEER_TLS_ROOTCERT_FILE
+    export CORE_PEER_LOCALMSPID
+    export CORE_PEER_TLS_ENABLED
+    export CORE_PEER_MSPCONFIGPATH
+    export CORE_PEER_ADDRESS
+    env | grep CORE
+}
+
+1_JoinChannel(){
+    echo "*******************join channel****************************"
+    setGlobals $ORGNUM
+    $PEER channel join -b ${CHANNEL_NAME}.block
+    verifyResult $? ${FUNCNAME[0]}    
+}
+
+2_InstallCc () {
+    echo "*************** Install Chaincode $CCPACKAGE on peer$ORGNUM **************"
+    setGlobals $ORGNUM
+    $PEER chaincode install $CCPACKAGE
+    verifyResult $? ${FUNCNAME[0]}    
+}
+
+function chlist () {
+    echo "*************** List channels the peer joined in *************"
+    setGlobals $ORGNUM
+    $PEER channel list
+}
+
+function cclist () {
+    setGlobals $ORGNUM
+    echo "*************** List chaincode the peer installed **************"
+    $PEER chaincode list --installed
+    echo "*************** List chaincode the peer instantiated on Channel $CHANNEL_NAME **************"
+    $PEER chaincode list --instantiated -C $CHANNEL_NAME
+}
+
+case $1 in
+  1) 1_JoinChannel ;;
+  2) 2_InstallCc   ;;
+  3) chlist        ;;
+  4) cclist        ;;
+  *)
+    echo "1_joinchannel       eg: ./$0 1 0 channelloc"
+    echo "2_installcc         eg: ./$0 2 0 loc.out"
+    echo "3_chlist            eg: ./$0 3 0"
+    echo "4_chlist            eg: ./$0 4 0 channelloc"
+  ;;
+esac

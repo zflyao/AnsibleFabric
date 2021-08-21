@@ -1,0 +1,9 @@
+---
+
+worker_group: blockchain
+worker_gid: 1500
+worker_user: blockchain
+worker_uid: 1500
+worker_home: "/home/{{ worker_user }}"
+docker_version: 17.06.1.ce-1.el7.centos
+centosrepo: http://mirror.centos.org

@@ -1,0 +1,58 @@
+---
+cli_home: "{{ worker_home }}/cli-{{ inventory_hostname | regex_replace('(.*\\d+).(.*\\d+)$','\\1_\\2') }}"
+cli_id: "{{ inventory_hostname.split('.')[0] | regex_search('\\d+') }}"
+node_type: "{{ inventory_hostname | regex_search('(orderer|peer|api)') }}"
+env_src: "environment/{{ inventory_dir | basename }}"
+worker_group: blockchain
+worker_user: blockchain
+kafka_hosts: "{{ groups['kafka'] }}"
+kafka_count: "{{ groups['kafka'] | length }}"
+peer_hosts: "{{ groups[org_name ~ '_peer'] }}"
+orderer_hosts: "{{ groups[ord_name ~ '_orderer'] | default('[]') }}"
+orderer_length: "{{ orderer_hosts | length }}"
+default_orderer_host: orderer{{ cli_id }}.{{ orderer_domain }}
+default_orderer_port: "{% if orderer_length == 1 or org_name != fabric_genesis_orgs.orgs.0 %}7050{% else %}700{{ cli_id | int + 1 }}{% endif %}"
+
+default_msp: >-
+  'Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member','Org5MSP.member',
+  'Org6MSP.member','Org7MSP.member','Org8MSP.member','Org9MSP.member','Org10MSP.member',
+  'Org11MSP.member','Org12MSP.member','Org13MSP.member','Org14MSP.member','Org15MSP.member',
+  'Org16MSP.member','Org17MSP.member','Org18MSP.member','Org19MSP.member','Org20MSP.member',
+  'Org21MSP.member','Org22MSP.member','Org23MSP.member','Org24MSP.member','Org25MSP.member',
+  'Org26MSP.member','Org27MSP.member','Org28MSP.member','Org29MSP.member','Org30MSP.member',
+  'Org31MSP.member','Org32MSP.member','Org33MSP.member','Org34MSP.member','Org35MSP.member',
+  'Org36MSP.member','Org37MSP.member','Org38MSP.member','Org39MSP.member','Org40MSP.member',
+  'Org41MSP.member','Org42MSP.member','Org43MSP.member','Org44MSP.member','Org45MSP.member',
+  'Org46MSP.member','Org47MSP.member','Org48MSP.member','Org49MSP.member','Org50MSP.member',
+  'Org51MSP.member','Org52MSP.member','Org53MSP.member','Org54MSP.member','Org55MSP.member',
+  'Org56MSP.member','Org57MSP.member','Org58MSP.member','Org59MSP.member','Org60MSP.member',
+  'Org61MSP.member','Org62MSP.member','Org63MSP.member','Org64MSP.member','Org65MSP.member',
+  'Org66MSP.member','Org67MSP.member','Org68MSP.member','Org69MSP.member','Org70MSP.member',
+  'Org71MSP.member','Org72MSP.member','Org73MSP.member','Org74MSP.member','Org75MSP.member',
+  'Org76MSP.member','Org77MSP.member','Org78MSP.member','Org79MSP.member','Org80MSP.member',
+  'Org81MSP.member','Org82MSP.member','Org83MSP.member','Org84MSP.member','Org85MSP.member',
+  'Org86MSP.member','Org87MSP.member','Org88MSP.member','Org89MSP.member','Org90MSP.member',
+  'Org91MSP.member','Org92MSP.member','Org93MSP.member','Org94MSP.member','Org95MSP.member',
+  'Org96MSP.member','Org97MSP.member','Org98MSP.member','Org99MSP.member','Org100MSP.member',
+  'Org101MSP.member','Org102MSP.member','Org103MSP.member','Org104MSP.member','Org105MSP.member',
+  'Org106MSP.member','Org107MSP.member','Org108MSP.member','Org109MSP.member','Org110MSP.member',
+  'Org111MSP.member','Org112MSP.member','Org113MSP.member','Org114MSP.member','Org115MSP.member',
+  'Org116MSP.member','Org117MSP.member','Org118MSP.member','Org119MSP.member','Org120MSP.member',
+  'Org121MSP.member','Org122MSP.member','Org123MSP.member','Org124MSP.member','Org125MSP.member',
+  'Org126MSP.member','Org127MSP.member','Org128MSP.member','Org129MSP.member','Org130MSP.member',
+  'Org131MSP.member','Org132MSP.member','Org133MSP.member','Org134MSP.member','Org135MSP.member',
+  'Org136MSP.member','Org137MSP.member','Org138MSP.member','Org139MSP.member','Org140MSP.member',
+  'Org141MSP.member','Org142MSP.member','Org143MSP.member','Org144MSP.member','Org145MSP.member',
+  'Org146MSP.member','Org147MSP.member','Org148MSP.member','Org149MSP.member','Org150MSP.member',
+  'Org151MSP.member','Org152MSP.member','Org153MSP.member','Org154MSP.member','Org155MSP.member',
+  'Org156MSP.member','Org157MSP.member','Org158MSP.member','Org159MSP.member','Org160MSP.member',
+  'Org161MSP.member','Org162MSP.member','Org163MSP.member','Org164MSP.member','Org165MSP.member',
+  'Org166MSP.member','Org167MSP.member','Org168MSP.member','Org169MSP.member','Org170MSP.member',
+  'Org171MSP.member','Org172MSP.member','Org173MSP.member','Org174MSP.member','Org175MSP.member',
+  'Org176MSP.member','Org177MSP.member','Org178MSP.member','Org179MSP.member','Org180MSP.member',
+  'Org181MSP.member','Org182MSP.member','Org183MSP.member','Org184MSP.member','Org185MSP.member',
+  'Org186MSP.member','Org187MSP.member','Org188MSP.member','Org189MSP.member','Org190MSP.member',
+  'Org191MSP.member','Org192MSP.member','Org193MSP.member','Org194MSP.member','Org195MSP.member',
+  'Org196MSP.member','Org197MSP.member','Org198MSP.member','Org199MSP.member','Org200MSP.member'
+
+default_policy: "OR ({{ default_msp }})"

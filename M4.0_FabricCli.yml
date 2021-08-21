@@ -1,0 +1,14 @@
+---
+#- name: Install fabric-tools for each orderer
+#  hosts: "{{ inventory | default('*_orderer') }}"
+#  roles:
+#    - role: fabric_cli
+#      operation: install_tools
+
+- name: Install fabric-tools for each peer
+  hosts: "{{ inventory | default('*_peer') }}"
+  vars_files:
+    - 1_vars/common.yml  
+  roles:
+    - role: fabric_cli
+      operation: install_tools

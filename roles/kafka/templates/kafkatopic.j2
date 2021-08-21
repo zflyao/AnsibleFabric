@@ -1,0 +1,66 @@
+#!/bin/sh
+######################脚本注释#############################
+# 文件名： kafkatopic.sh[查看通道信息]                    #
+# 功  能： 查看通道                                       #
+# 作  者： hoke                                           #
+# 时  间： 20181025                                       #
+# 单  元： kafka                                         #
+###########################################################
+CHANNEL_NAME=$2
+MYNAME=${0##*/}
+container=`docker ps -aq -f name=kafka`
+ZK={% for z in groups['zookeeper'] %}{{ hostvars[z]['ansible_ssh_host'] }}:218{{ loop.index }},{% endfor %}
+
+list() {
+  docker exec $container /opt/kafka/bin/kafka-topics.sh --list --zookeeper $ZK
+}
+
+topic() {
+  docker exec -i $container /opt/kafka/bin/kafka-topics.sh --zookeeper $ZK --topic "$CHANNEL_NAME" --describe
+}
+
+helpInfo() {
+    cat <<EOL
+提示:
+  1. kafka操作选项: -l, -t, -h;
+
+  2. kafka具体channel信息;
+
+用法: $MYNAME [选项]...
+
+选项:
+  -l, --list        显示通道列表
+  -t channelfft, --topic channelfft 显示channelfft具体信息
+  -h, --help        显示帮助信息
+
+错误码：
+  0  正常
+  1  命令参数错误
+EOL
+}
+
+if [ ! $1 ];then
+    list
+else
+LONGOPTS="list,topic,help"
+CMD=`getopt -o lt:h --long $LONGOPTS -n "xxx" -- "$@"`
+eval set -- "$CMD"
+
+while true ; do
+    echo "----------------------------------------------------------------------------------------------------------"
+    case "$1" in
+        -l|--list)
+        list
+        shift ;;
+        -t|--topic)
+        topic
+        shift
+        break ;;
+        -h|--help|*)
+        helpInfo
+        echo "----------------------------------------------------------------------------------------------------------"
+        exit 1
+        ;;
+    esac
+done
+fi

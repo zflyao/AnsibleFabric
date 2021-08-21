@@ -1,0 +1,29 @@
+---
+- name: 启动 zookeeper 容器
+  command: docker-compose up -d
+  args:
+    chdir: "{{ zk_home }}"
+  tags: rebuild
+
+- name: 等待 zookeeper port 监听
+  wait_for:
+    timeout: 5
+  tags: rebuild
+
+- name: 检查 zookeeper 服务状态
+  shell: docker exec -i `docker ps -aq -f name={{ inventory_hostname }}` zkServer.sh status
+  register: zk_status
+  ignore_errors: yes
+  tags: rebuild,check
+- debug: 
+    msg: "{{zk_status.stdout}}"
+  tags: rebuild,check
+
+- name: stat zookeeper 218{{ id }}
+  shell: ( echo "stat"; sleep 1) | telnet localhost 218{{ id }} || echo
+  register: zkstat
+  ignore_errors: yes
+  tags: rebuild,check
+- debug: 
+    msg: "{{ zkstat.stdout_lines }}"
+  tags: rebuild,check

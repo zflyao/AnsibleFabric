@@ -1,0 +1,34 @@
+version: '3'
+
+services:
+  api_{{ instance_name }}:
+    container_name: api_{{ instance_name }}
+    image: {{ harbor_domain }}/{{ docker_image_project }}/{{ docker_image_name }}:{{ version }}
+    restart: always
+    working_dir: /opt/ApiServer/JavaClientSDK
+    environment:
+      - LANG=en_US.UTF-8
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./current.info:/opt/ApiServer/current.info
+      - ./config:/opt/ApiServer/config
+      - ./logs:/opt/ApiServer/logs
+      - ./scripts:/opt/ApiServer/scripts
+      - {{ worker_home }}/crypto-config:/home/blockchain/crypto-config
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+      - {{ instance_vars.listen_port }}:{{ instance_vars.listen_port }}
+    extra_hosts:
+{% for each_mq in groups[api_vars.rabbitmq_group] %}
+      {{ hostvars[each_mq]['inventory_hostname'] }}: {{ hostvars[each_mq]['ansible_ssh_host'] }}
+{% endfor %}
+      peer{{ server_id }}.{{ peer_domain }}: {{ hostvars['peer'~server_id~'.'~org_name]['ansible_ssh_host'] }}
+{% if own_orderer %}
+      orderer{{ server_id }}.{{ orderer_domain }}: {{ hostvars['orderer'~server_id~'.'~ord_name]['ansible_ssh_host'] }}
+{% else %}
+      orderer{{ server_id }}.{{ orderer_domain }}: {{ hostvars['orderer'~server_id~'.'~ord_name]['slb'] | default(hostvars['orderer'~server_id~'.'~ord_name]['ansible_ssh_host'], true)}}
+{% endif %}

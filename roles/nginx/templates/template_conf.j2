@@ -1,0 +1,52 @@
+# 模板为福费廷例子，请根据实际上线产品情况修改“ ”内容，并删除引号
+
+upstream "java_server_fft" {  # 修改upstream名称
+#    ip_hash;
+    server "fft-java1":9090 max_fails=2 fail_timeout=10s;  #修改后台应用ip及端口监听端口
+    #server "fft-java2":9090 max_fails=2 fail_timeout=10s;  #修改后台应用ip及端口监听端口，多节点java后台都需要配置
+}
+
+server {
+    listen {{ nginx_http | default('8080') }};  #监听端口号
+    server_name  "forfaiting.finrunchain.com";  #修改产品URL
+    access_log logs/"fft".access.log main;  #修改前台日志名称
+    error_log logs/"fft".error.log;  #修改前台日志名称
+    error_page 404 /404.html;
+    error_page 502 503 504 /error.html;
+    location /404.html{
+        root {{ nginx_home }}/html;
+    }
+    location error.html{
+        root {{ nginx_home }}/html;
+    }
+    location ~(/app/|/content/)$ {
+    return 404;
+    }
+
+    location / {
+        if ($request_method = OPTIONS ) {
+            return 403;
+        }
+        if ($request_method = TRACE ) {
+            return 403;
+        }
+        if ($request_method = TRACK ) {
+            return 403;
+        }
+        root {{ nginx_home }}/"ng_forfaiting/www";  #修改前台包路径
+        index index.html;
+    }
+
+    location /api {
+        if ($request_method = OPTIONS ) {
+            return 403;
+        }
+        if ($request_method = TRACE ) {
+            return 403;
+        }
+        if ($request_method = TRACK ) {
+            return 403;
+        }
+        proxy_pass http://"java_server_fft";  修改upstream名称[务必与前面名称一致]#
+    }
+}

@@ -1,0 +1,8 @@
+---
+- name: 强制停止 nmon 进程
+  shell: ps -ef | grep nmon | grep -v grep | awk '{ print $2 }' | xargs -r kill -9
+
+- name: 若仍未停止 nmon 进程，则失败
+  shell: ps -ef | grep nmon | grep -v grep
+  register: ps
+  failed_when: ps.rc == 0

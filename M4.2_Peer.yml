@@ -1,0 +1,11 @@
+---
+
+- name: peer
+  hosts: "{{ inventory | default('*_peer') }}"
+  gather_facts: false
+  vars_files:
+    - 1_vars/common.yml
+  vars:
+    operation: install
+  roles:
+    - peer

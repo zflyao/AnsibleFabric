@@ -1,0 +1,52 @@
+#!/bin/bash
+process=`ps -ef | grep -i hbcc-cloud-service-ws | grep -v "grep" | awk '{print $2}'`
+apphome="{{ worker_home }}/hbcc_cloud/hbcc-cloud-service-ws"
+jarname="hbcc-cloud-service-ws-1.0.0.jar"
+file="${apphome}/etc/tmp/pid"
+if [ "$1" = "start" ];then
+{
+  if [ "${process}" != ""  ];then
+  {
+#    file="${rootpath}etc/tmp/pid"
+    pid=$(cat ${file})
+    echo "-----The process is running! PID:${pid}-----"
+  }
+  else
+  {
+  cd ${apphome}/bin/
+  java -Djava.ext.dirs=${apphome}/lib -cp ${apphome}/lib/${jarname} com.hoperun.qkl.cloud.ws.Launcher >/dev/null 2>&1 &  
+  time=15
+  i=1
+  while [[ ! -f "${apphome}/logs/hbcc-cloud.log" ]] && [[ "$i" -ne "$time" ]]
+  do
+	let "i++"
+    sleep 1
+  done
+  tail -f ${apphome}/logs/hbcc-cloud.log
+  }
+  fi
+  }
+elif [ "$1" = "stop" ];then
+{
+  if [[ -f ${file} ]] && [[ "${process}" != "" ]];then
+  {
+    pid=$(cat ${file})
+    echo "-----Shuting Down! PID:${pid}-----"
+    kill -15 ${pid}
+    rm -rf ${file}
+    process2=`ps -ef | grep -i hbcc-cloud-service-ws | grep -v "grep" | awk '{print $2}'`
+    if [ "${process2}" != "" ];then
+    {
+      kill -15 ${process2}
+      echo "-----Shuting down extra processes!-----"
+    }
+    fi
+    echo "-----Successful-----"
+  }
+  else
+    echo "-----The program is not running!-----"
+  fi
+}
+else
+  echo "-----Please add parameter 'start' or 'stop'-----"
+fi

@@ -1,0 +1,27 @@
+# 升级 chaincode，需要提供 chaincode 的 ccname / version / lang / channel / policy
+---
+- name: 生成链码升级脚本 {{ ccname }}_upgrade.sh
+  template:
+    src: chaincode_upgrade.sh.j2
+    dest: "{{ cli_home }}/tools/{{ ccname }}_upgrade.sh"
+    mode: 0755
+
+- name: Upgrade chaincode
+  command: docker exec cli-{{ inventory_hostname }} /home/{{ ccname }}_upgrade.sh {{ channel }}
+
+- name: 稍等~
+  wait_for:
+    timeout: 3
+  when: instantiated.rc != 0
+
+- name: 检查升级结果
+  shell: >
+    docker exec cli-{{ inventory_hostname }} peer chaincode list --instantiated -C {{ channel }} 2>/dev/null |
+     grep 'Name: {{ ccname }}, Version: {{ version }}'
+  register: upgrade_result
+
+- name: 返回结果
+  debug:
+    msg: 链码 {{ ccname }}-{{ version }} 在 {{ channel }} 上升级成功！
+  when: upgrade_result.rc == 0
+

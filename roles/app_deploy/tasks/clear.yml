@@ -1,0 +1,14 @@
+- name: Check if {{ work_dir }} exists
+  stat:
+    path: "{{ work_dir }}"
+  register: work_dir_status
+
+- name: Backup old version
+  command:
+    argv:
+    - mv
+    - -T
+    - "{{ work_dir }}"
+    - "{{ work_dir }}-{{ time }}"
+  when: work_dir_status.stat.exists
+

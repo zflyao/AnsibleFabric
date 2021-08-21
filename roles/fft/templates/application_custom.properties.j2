@@ -1,0 +1,56 @@
+###application config
+spring.application.name=Forfaiting
+spring.application.version={{ fft_ver }}
+###database config
+spring.jpa.database-platform=org.hibernate.dialect.Oracle10gDialect
+spring.jpa.database=ORACLE
+#spring.datasource.url=jdbc:oracle:thin:@{{oracle_dns}}:{{oracle_port}}:{{oracle_sid}}#}
+spring.datasource.url=jdbc:oracle:thin:@(DESCRIPTION =(ENABLE=BROKEN)(ADDRESS_LIST = (ADDRESS = (PROTOCOL = TCP)(HOST ={{oracle1_dns}})(PORT = {{oracle_port1}}))(ADDRESS = (PROTOCOL = TCP)(HOST ={{oracle2_dns}})(PORT = {{oracle_port2}}))(FAILOVER=YES) (LOAD_BALANCE =NO)) (CONNECT_DATA=(SERVICE_NAME = {{oracle_sid}}) ) )
+spring.datasource.username={{oracle_user}}
+spring.datasource.password={{oracle_pass}}
+###cache address
+hoperun.cache.hazelcast.address={{ hazelcast0_dns }}:5702,{{ hazelcast1_dns }}:5702,{{ hazelcast2_dns }}:5702
+hoperun.cache.hazelcast.groupName=test
+hoperun.cache.hazelcast.groupPasswd=test-pass
+##businessLine
+hbcc.core.properties.businessLine=LC
+hbcc.core.properties.subBusinessLine=FFT
+##mongodb
+hbcc.core.properties.mongodb.addresses=mongodb://{{ mongodb_user_name }}:{{ mongodb_user_passwd }}@{{ mongodb_p_dns }}:27010,{{ mongodb_s_dns }}:27010/mongo
+###message queue
+hbcc.core.properties.mqConfigProperties.rabbitMQConfig.username=loc
+hbcc.core.properties.mqConfigProperties.rabbitMQConfig.password=loc
+hbcc.core.properties.mqConfigProperties.rabbitMQConfig.addresses={{ rabbitmq1_dns }}:5672,{{ rabbitmq2_dns }}:5672,{{ rabbitmq3_dns }}:5672
+hbcc.core.properties.mqConfigProperties.rabbitMQConfig.sysQueueName=sys_fftQueue
+hbcc.core.properties.mqConfigProperties.rabbitMQConfig.sysMsgPrefix=user_alias
+hbcc.core.properties.mqConfigProperties.queue.queueName=fftQueue
+hbcc.core.properties.mqConfigProperties.queue.consumerAmountsPreQueue=8
+##blockchian config
+hbcc.core.properties.blockChain.connection.pool.host={{ api_dns }}
+hbcc.core.properties.blockChain.connection.pool.port=5555
+hbcc.core.properties.blockChain.connection.pool.forceRefresh=false
+hbcc.core.properties.blockChain.connection.channel=channelfft
+hbcc.core.properties.blockChain.connection.enableSSL=false
+hbcc.core.properties.blockChain.connection.supportedProtocols=TLSv1
+hbcc.core.properties.blockChain.connection.enableConnectionReuse=false
+#cloud
+hbcc.core.properties.cloudHost=http://{{ hbcccloud_dns }}:4040
+#http
+hoperun.http.sessionTimeoutMinutes=30
+hoperun.http.maximumSessions=1
+#pressimage
+hbcc.core.properties.pressImage.english={{ fft_dir }}/config/English.png
+hbcc.core.properties.pressImage.englishLg={{ fft_dir }}/config/English_lg.png
+hbcc.core.properties.pressImage.chinese={{ fft_dir }}/config/Chinese.png
+hbcc.core.properties.pressImage.chineseLg={{ fft_dir }}/config/Chinese_lg.png
+#statemachine
+hoperun.plugins.statemachine.umlFilePath1={{ fft_dir }}/config/buyer-offer.uml
+hoperun.plugins.statemachine.umlFilePath2={{ fft_dir }}/config/forfaiting.uml
+hoperun.plugins.statemachine.umlFilePath3={{ fft_dir }}/config/forfaiting-notice.uml
+#log
+logging.config={{ fft_dir }}/config/logback-spring.xml
+#port
+server.port=9090
+hbcc.ugm.rolePath={{ fft_dir }}/config/init_default_roles.json
+
+application.plugin.keyCode=1234567890123456789011

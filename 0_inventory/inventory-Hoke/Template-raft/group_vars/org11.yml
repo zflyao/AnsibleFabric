@@ -1,0 +1,27 @@
+---
+# Fabric Peer
+org_name: org11
+org_mspname: Org11MSP
+org_mspid: Org11MSP
+org_domain: tfrunchain.com
+peer_domain: org11.tfrunchain.com
+join_channels:
+- channelfft
+
+# Fabric Orderer
+own_orderer: true
+ord_name: ord11
+ord_mspname: Orderer11MSP
+ord_mspid: Orderer11MSP
+orderer_domain: ord11.tfrunchain.com
+
+instances:
+  haiyun:
+    platform-hfclient-sdk-ws:
+      version: 1.2.0.007.RELEASE
+      listen_port: 6789
+      domain: apiserver.{{ org_domain }}
+      channel: channelhaiyun
+      chaincode: haiyun
+      rabbitmq_exchange: haiyunExchange
+      on_group: "{{ org_name }}_api"

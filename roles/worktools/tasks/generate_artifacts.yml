@@ -1,0 +1,109 @@
+---
+
+- name: 创建 tools 目录
+  file:
+    path: "{{ fabric_home }}/tools"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: copy cryptotool
+  copy:
+    src: cryptotool
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: "copy V{{fabric_deploy_ver}} bin"
+  copy:
+    src: "bin_v{{fabric_deploy_ver}}/"
+    dest: "{{ fabric_home }}/tools/cryptotool/linux-amd64/bin/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755    
+
+- name: 生成{{ fabric_deploy_ver }}版configtx.yaml配置文件
+  template:
+    src: "generate/configtx_v{{fabric_deploy_ver}}.yaml.j2"
+    dest: "{{ fabric_home }}/tools/{{item}}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0600
+  with_items:
+    - cryptotool/sampleconfig/configtx.yaml
+    - configtx.yaml
+
+- name: Generate artifacts shell
+  template:
+    src: generate/generate_artifacts.sh
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+
+- name: 判断证书是否已存在
+  stat:
+    path: "{{ playbook_dir }}/{{ env_src }}/channel-artifacts"
+  delegate_to: localhost
+  register: dir_exist
+  tags: always
+
+- name: rsync to the dest on the localhost when localhost dir exist
+  command: rsync -e "ssh -i {{ lookup('env', 'PWD') }}/summary_files/common/sshkey/id_rsa_1024_root"  -avz --delete {{ lookup('env', 'PWD') }}/{{ env_src }}/channel-artifacts root@{{hostvars['peer0.org1'].ansible_ssh_host}}:{{ fabric_home }}/tools
+  delegate_to: localhost
+  register: rsync_result
+  tags: rsyncpush
+  when: dir_exist.stat.exists
+
+- debug: 
+    msg: "{{ rsync_result.stdout_lines }}"
+  tags: rsyncpush
+  when: dir_exist.stat.exists
+
+- name: chown -R
+  file:
+    path: "{{ fabric_home }}/tools/channel-artifacts"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes
+  when: dir_exist.stat.exists
+
+- name: 确保生成目录环境干净
+  file:
+    path: "{{ fabric_home }}/tools/channel-artifacts"
+    state: absent
+  when: not dir_exist.stat.exists
+
+- name: 生成初始区块配置
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash generate_artifacts.sh 1
+  register: genartifacts
+  args: 
+    chdir: "{{ fabric_home }}/tools"
+  when: not dir_exist.stat.exists
+
+- debug: 
+    msg: "{{ genartifacts.stderr_lines }}"
+  when: not dir_exist.stat.exists
+
+#- name: Synchronization of src on the inventory host to the dest on the localhost in pull mode
+#  synchronize:
+#    mode: pull
+#    src: "{{ fabric_home }}/tools/channel-artifacts"
+#    dest: "{{ env_src }}"
+#    private_key: "{{ lookup('env', 'PWD') }}/summary_files/common/sshkey/id_rsa_1024_root"
+#    delete: yes
+#    recursive: yes
+
+- name: rsync to the dest on the localhost
+  command: rsync -e "ssh -i {{ lookup('env', 'PWD') }}/summary_files/common/sshkey/id_rsa_1024_root"  -avz --delete root@{{hostvars['peer0.org1'].ansible_ssh_host}}:{{ fabric_home }}/tools/channel-artifacts {{ lookup('env', 'PWD') }}/{{ env_src }}
+  delegate_to: localhost
+  register: rsync_result
+  tags: rsyncpull
+
+- debug: 
+    msg: "{{ rsync_result.stdout_lines }}"
+  tags: rsyncpull

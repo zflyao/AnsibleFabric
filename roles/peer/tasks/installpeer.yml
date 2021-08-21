@@ -1,0 +1,86 @@
+- name: 确保docker开机自启
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: 创建images conf目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - "{{ fabric_home }}/conf"
+    - "{{ worker_home }}/images"
+    - "{{ worker_home }}/crypto-config/peerOrganizations/{{ peer_domain }}/peers"
+
+- name: 上传 peer 镜像
+  copy:
+    src: "../../../files/docker-images/{{ fabric_deploy_ver | default('1.0') }}/{{ item }}"
+    dest: "{{ worker_home }}/images/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - peer.tar
+    - ccenv.tar
+  when: not harbor
+
+- name: 镜像导入docker
+  command: docker load -i {{ worker_home }}/images/{{ item }}
+  with_items:
+    - peer.tar
+    - ccenv.tar
+  when: not harbor
+
+- name: docker login
+  command: docker login {{ harbor_domain | default ('hub.finrunchain.com') }} -u {{ harbor_user | default('ansible')}} -p {{ harbor_passwd | default('Ansible123') }}
+  when: harbor
+
+- include_tasks: less1.4.yml
+  when: fabric_deploy_ver|string == "1.0" or fabric_deploy_ver|string == "1.1"
+
+- name: pull peer images
+  command: docker pull {{ harbor_domain | default ('hub.finrunchain.com') }}/{{item}}
+  loop:
+    - hyperledger/fabric-peer:1.4.0
+    - fabric1.4/fabric-ccenv:latest
+  when: harbor and fabric_deploy_ver == "1.4.0"
+
+- name: 上传 peer 证书
+  copy:
+    src: "{{ playbook_dir }}/{{ env_src }}/crypto-config/peerOrganizations/{{ peer_domain }}/peers/peer{{ peer_id }}.{{ peer_domain }}"
+    dest: "{{ worker_home }}/crypto-config/peerOrganizations/{{ peer_domain }}/peers"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 上传peer-compose配置文件
+  template:
+    src: peer.j2
+    dest: "{{ fabric_home }}/conf/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: 启动 peer 容器
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: /usr/local/bin/docker-compose -f {{ fabric_home }}/conf/docker-compose.yml up -d
+  tags:
+    - rebuild
+
+- name: 等待 peer port 监听
+  wait_for:
+    port: 7051
+    delay: 10
+  tags:
+    - rebuild
+
+- name: "检查 {{ inventory_hostname }} 容器的状态"
+  shell: docker ps -a -f name=peer
+  register: peer_docker
+  tags:
+    - rebuild
+- debug:
+    msg: "{{peer_docker.stdout_lines}}"
+  tags:
+    - rebuild

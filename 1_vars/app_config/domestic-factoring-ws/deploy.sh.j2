@@ -1,0 +1,29 @@
+#!/bin/bash
+
+export JAVA_HOME=/usr/java/jdk{{ java_version }}
+export PATH=$JAVA_HOME/bin:$PATH
+
+APP_NAME={{ app_name }}
+ROOT_PATH={{ work_dir }}
+JAR=$(ls $ROOT_PATH/lib/${APP_NAME}-*.jar)
+LOG=$ROOT_PATH/logs/stdout.log
+JVM_ARGS="{{ instance_vars.jvm_args | default(jvm_args) }}"
+MAIN_CLASS=com.runchain.qkl.factoring.Launcher
+
+stop_java() {
+  PID=$(ps -ef | grep $ROOT_PATH | grep -v grep | awk '{ print $2 }')
+  if [ -n "$PID" ]; then
+    kill $PID
+  fi
+}
+
+start_java() {
+  mkdir -p $ROOT_PATH/logs
+  nohup java $JVM_ARGS -Droot.path=$ROOT_PATH -Djava.ext.dirs=$ROOT_PATH/lib -cp $JAR $MAIN_CLASS >$LOG 2>&1 &
+}
+
+case $1 in
+  stop)   stop_java  ;;
+  start)  start_java ;;
+  *)      echo '请指定命令：stop 或 start'; exit 1 ;;
+esac

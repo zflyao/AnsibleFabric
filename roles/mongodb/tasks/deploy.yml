@@ -1,0 +1,22 @@
+---
+- name: 创建 MongoDB 工作目录
+  file:
+    path: "{{ mongodb_home }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- import_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ fabric_harbor_project }}"
+    image_name: "{{ mongodb_docker_image_name }}"
+    image_tag: "{{ mongodb_docker_image_tag }}"
+
+- name: 上传 MongoDB docker-compose 配置文件
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ mongodb_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+

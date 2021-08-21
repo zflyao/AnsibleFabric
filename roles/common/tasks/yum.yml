@@ -1,0 +1,50 @@
+---
+
+- name: CentOS-Base.repo
+  template:
+    src: "{{ item }}"
+    dest: "/etc/yum.repos.d/{{ item }}"
+    backup: yes
+  with_items:
+    - CentOS-Base.repo
+    - docker-ce.repo
+  when: ansible_distribution == "CentOS"
+
+- name: rhel-centos.repo
+  template:
+    src: "{{ item }}"
+    dest: "/etc/yum.repos.d/{{ item }}"
+    backup: yes
+  with_items:
+    - rhel-centos.repo
+    - docker-ce.repo
+  when: ansible_distribution == "RedHat"
+
+- name: ensure a list of packages installed
+  yum:
+    name:
+      - gcc
+      - gcc-c++
+      - ntp
+      - ntpdate
+      - lrzsz
+      - tree
+      - telnet
+      - sysstat
+      - iptraf
+      - python-devel
+      - openssl-devel
+      - zlib-devel
+      - nmap
+      - screen
+      - vim
+      - bind-utils
+      - git
+      - unzip
+      - man-pages-zh-CN.noarch
+      - wget
+      - net-tools
+      - lsof
+      - rsync
+      - python-setuptools
+    state: present

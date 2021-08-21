@@ -1,0 +1,23 @@
+---
+- name: Check if docker-compose.yml exists
+  stat:
+    path: "{{ work_dir }}/docker-compose.yml"
+  register: compose_st
+  tags:
+  - stop
+
+- name: Stop container
+  command: docker-compose stop
+  args:
+    chdir: "{{ work_dir }}"
+  when: compose_st.stat.exists
+  tags:
+  - stop
+
+- name: Remove container after successful stop
+  command: docker-compose rm -f
+  args:
+    chdir: "{{ work_dir }}"
+  when: compose_st.stat.exists
+  tags:
+  - stop

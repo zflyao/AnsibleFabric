@@ -1,0 +1,18 @@
+---
+
+- name: 创建镜像存放目录
+  file:
+    path: "{{ worker_home }}/images"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+
+- name: 上传镜像 {{ image_name }}
+  copy:
+    src: "{{ playbook_dir }}/summary_files/docker-images/{{ image_name }}-{{ image_tag }}.tar"
+    dest: "{{ worker_home }}/images/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: docker load
+  shell: docker load -i "{{ worker_home }}/images/{{ image_name }}-{{ image_tag }}.tar"

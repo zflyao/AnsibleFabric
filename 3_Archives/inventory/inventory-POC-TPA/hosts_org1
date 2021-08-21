@@ -1,0 +1,52 @@
+############## Orderer ############
+[zookeeper]
+zookeeper1 ansible_ssh_host=10.10.7.61
+
+[kafka]
+kafka1 ansible_ssh_host=10.10.7.61
+
+[ord1_orderer]
+orderer0.ord1 ansible_ssh_host=10.10.7.61
+
+############## ORG1 ##############
+[org1_peer]
+peer0.org1 ansible_ssh_host=10.10.7.61
+
+[org1_api]
+api0.org1 ansible_ssh_host=10.10.7.61
+
+[org1_nginx]
+web0.org1 ansible_ssh_host=10.10.7.60
+
+[org1_java]
+app0.org1 ansible_ssh_host=10.10.7.60
+
+[org1_rabbitmq]
+mq0_org1 ansible_ssh_host=10.10.7.62
+
+[org1_mongodb]
+mongo0.org1 ansible_ssh_host=10.10.7.62
+
+[org1_pg]
+db0.org1 ansible_ssh_host=10.10.7.62
+
+#[org1_lb]
+#slb.org1 ansible_ssh_host=10.10.101.44
+
+[org1:children]
+zookeeper
+kafka
+ord1_orderer
+org1_peer
+org1_api
+org1_nginx
+org1_java
+org1_rabbitmq
+org1_mongodb
+org1_pg
+
+[org1_unique:children]
+org1_peer
+org1_nginx
+org1_pg
+#org1_lb

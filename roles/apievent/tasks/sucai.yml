@@ -1,0 +1,148 @@
+---
+
+- name: 创建工作目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - "{{ ccname_home }}"
+    - "{{ fabric_home }}/images"
+    - "{{ fabric_home }}/crypto-config/ordererOrganizations"
+    - "{{ fabric_home }}/crypto-config/peerOrganizations"
+
+#- name: 上传镜像
+#  copy:
+#    src: "../../../fabric-images/{{ fabric_deploy_ver }}/asset-api.tar"
+#    dest: "{{ fabric_home }}/images/"
+#    group: "{{ worker_user }}"
+#    owner: "{{ worker_user }}"
+#
+#- name: 镜像导入docker
+#  shell: docker load -i {{ fabric_home }}/images/asset-api.tar
+#  args:
+#    chdir: "{{ fabric_home }}/images"
+#
+- name: pull 镜像
+  command: docker pull {{ harbor }}/{{ harbor_project }}/asset/apiserver:latest
+
+- name: 上传 fabric 证书
+  copy:
+    src: "../../../{{ generate }}/crypto-config/{{ item.src }}"
+    dest: "{{ fabric_home }}/crypto-config/{{ item.dest }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - { src: 'ordererOrganizations/ord1.finblockchain.cn' , dest: 'ordererOrganizations' }
+    - { src: 'peerOrganizations/org{{org_id}}.{{ fabric_domain }}' , dest: 'peerOrganizations' }
+
+- name: 生成 currentblock.info
+  file:
+    path: "{{ ccname_home }}/currentblock.info"
+    state: touch
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+    mode: "u=rw,g=rw,o=r"
+
+- name: 上传 API 配置模板
+  template:
+    src: "{{ item.src }}.j2"
+    dest: "{{ ccname_home }}/{{ item.dest }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+  with_items:
+    - { src: 'sucai-client_sdk' , dest: 'client_sdk.yaml' }
+    - { src: 'sucai-api' , dest: 'docker-compose.yml' }
+
+- name: 启动 docker 容器
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: /usr/local/bin/docker-compose -f {{ ccname_home }}/docker-compose.yml up -d
+  tags:
+    - rebuild
+
+- name: 等待10秒
+  wait_for:
+    timeout: 10
+  tags: rebuild
+
+- name: 检查容器启动是否正常
+  shell: docker ps -a -f name={{ ccname }}
+  register: docker_status
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ docker_status.stdout_lines }}"
+  tags:
+    - rebuild
+
+- name: 检查 API 容器的id
+  shell: docker ps -aq -f name=apiserver_{{ ccname }}
+  register: api_containers
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ api_containers.stdout_lines }}"
+  tags:
+    - rebuild
+
+- name: 获得完整的 API 容器的id
+  shell: ls /var/lib/docker/containers/ | grep {{ api_containers.stdout }}
+  register: api_containers_nu
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ api_containers_nu.stdout }}"
+  tags:
+    - rebuild
+
+- name: 等待 API port 监听
+  wait_for:
+    port: "{{ api_port }}"
+    delay: 10
+  tags:
+    - rebuild
+
+- name: 检查 API 启动是否正常
+  shell: "grep 'CRIT : Actual pid is' /var/lib/docker/containers/{{ api_containers_nu.stdout }}/{{ api_containers_nu.stdout }}-json.log"
+  register: api_status
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ api_status.stdout_lines }}"
+  tags:
+    - rebuild
+
+- name: 底层探活
+  shell: "curl -H  'Content-Type: application/json' -X GET http://127.0.0.1:{{ api_port }}/assetTradingPlatform/KeepAlive"
+  register: fabric_status
+  tags:
+    - rebuild
+
+- debug:
+    msg: "{{ fabric_status.stdout_lines }}"
+  tags:
+    - rebuild
+
+- name: 创建bin目录
+  file:
+    path: "{{ fabric_home }}/bin"
+    state: directory
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 底层探活验证脚本
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ fabric_home }}/bin/{{ ccname|default('fft') }}-{{ item }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+  with_items:
+    - live.sh
+#    - savedata.sh
+
+- debug:
+    msg: "下一步去peer组件执行docker cp key_list.yaml dev-peer0.{{ fabric_domain }}-{{ ccname }}-{{ ccver }}:/usr/local/bin/"

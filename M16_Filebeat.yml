@@ -1,0 +1,5 @@
+- name: Install filebeat
+  hosts: "{{ inventory }}"
+  tasks:
+  - import_role:
+      name: beats

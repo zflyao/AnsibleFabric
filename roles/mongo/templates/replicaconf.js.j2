@@ -1,0 +1,6 @@
+cfg = {"_id": "{{ replica_replset }}", "members":[
+    {"_id": 0,"host":"mongo1.org{{ org_id }}.{{ fabric_domain }}:{{ mongodb_replica_port | default ('27010') }}","priority":2},
+    {"_id": 1,"host":"mongo2.org{{ org_id }}.{{ fabric_domain }}:{{ mongodb_replica_port | default ('27010') }}","priority":1},
+    {"_id": 2,"host":"mongo3.org{{ org_id }}.{{ fabric_domain }}:{{ mongodb_replica_port | default ('27010') }}","arbiterOnly":true},
+]}
+rs.initiate(cfg)

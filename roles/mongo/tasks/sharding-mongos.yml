@@ -1,0 +1,151 @@
+---
+
+- name: 拷贝 mongos 配置文件
+  template:
+    src: sharding-mongos.conf.j2
+    dest: "{{ worker_home }}/mongodb/conf/sharding-mongos.conf"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_group }}"
+
+- name: get pid of mongos
+  shell: pidof mongos
+  register: pidof_mongos_mongs
+  ignore_errors: yes
+
+- name: 启动 mongo-mongos 集群
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongos -f {{ worker_home }}/mongodb/conf/sharding-mongos.conf"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  ignore_errors: yes
+  register: mongo_mongos_start
+  when: pidof_mongos_mongs.rc == 1
+- debug:
+    msg: "{{ mongo_mongos_start.stdout_lines }}"
+  ignore_errors: yes
+
+- name: 等待 mongo-mongos port 监听
+  wait_for:
+    port: "{{ mongodb_mongos_port | default ('27020') }}"
+    delay: 5
+
+- name: 在mongo_route1上传初始化用户脚本
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ worker_home }}/mongodb/conf/{{ item }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_user }}"
+  with_items:
+    - creat_clusteruser.js
+    - creat_admin.js
+    - creat_user.js
+  when: inventory_hostname == "mongo_route1"
+
+- name: 等待 mongo-mongos port 监听
+  wait_for:
+    port: "{{ mongodb_mongos_port | default ('27020') }}"
+    delay: 15
+
+- name: 在mongos1上创建 admin 用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_mongos_port | default ('27020') }} admin --quiet {{ worker_home }}/mongodb/conf/creat_admin.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_admin
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+- debug:
+    msg: "{{ add_mongo_admin.stdout_lines }}"
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+
+- name: 等待15s检查回显
+  wait_for:
+    port: "{{ mongodb_mongos_port | default ('27020') }}"
+    delay: 15
+
+- name: 在mongos1上创建 cluster 用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_mongos_port | default ('27020') }} admin --quiet {{ worker_home }}/mongodb/conf/creat_clusteruser.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_cluster
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+- debug:
+    msg: "{{ add_mongo_cluster.stdout_lines }}"
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+
+- name: 等待15s检查回显
+  wait_for:
+    port: "{{ mongodb_mongos_port | default ('27020') }}"
+    delay: 15
+
+- name: 在mongos1上创建普通用户
+  become: yes
+  become_user: "{{ mongo_user }}"
+  command: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_mongos_port | default ('27020') }} mongo --quiet {{ worker_home }}/mongodb/conf/creat_user.js"
+  args:
+    chdir: "{{worker_home}}/mongodb/conf"
+  register: add_mongo_user
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+- debug:
+    msg: "{{ add_mongo_user.stdout_lines }}"
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+
+- name: 等待15s检查回显
+  wait_for:
+    port: "{{ mongodb_mongos_port | default ('27020') }}"
+    delay: 15
+
+- name: 在mongo_route1上传初始化sharding脚本
+  template:
+    src: "mongos/{{ item }}.j2"
+    dest: "{{ worker_home }}/mongodb/conf/{{ item }}"
+    owner: "{{ mongo_user }}"
+    group: "{{ mongo_user }}"
+  with_items:
+    - addsharding.js
+    - shardfunc.js
+    - execshardfunc.js
+    - fft_statistics.js
+  when: inventory_hostname == "mongo_route1"
+
+- name: mongo_route1 上执行初始化sharding
+  become: yes
+  become_user: '{{ mongo_user }}'
+  shell: "{{ worker_home }}/mongodb/bin/mongo --port {{ mongodb_mongos_port | default ('27020') }} mongo --quiet {{ worker_home }}/mongodb/conf/addsharding.js"
+  args:
+    chdir: "{{ worker_home }}/mongodb/conf"
+  register: addsharding
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+- debug:
+    msg: "{{ addsharding.stdout_lines }}"
+  ignore_errors: yes
+  when: inventory_hostname == "mongo_route1"
+
+#- name: 等待15s检查回显
+#  wait_for:
+#    port: "{{ mongodb_mongos_port | default ('27020') }}"
+#    delay: 15
+#
+#- name: mongo_route1 上执行初始化索引
+#  become: yes
+#  become_user: '{{ mongo_user }}'
+#  shell: echo 'load("{{ worker_home }}/mongodb/conf/execshardfunc.js")'| {{ worker_home }}/mongodb/bin/mongo 127.0.0.1:{{ mongodb_mongos_port | default ('27020') }}/mongo --username={{ mongodb_root_name }} --password={{ mongodb_root_passwd }} --authenticationDatabase=admin --quiet
+#  args:
+#    chdir: "{{ worker_home }}/mongodb/conf"
+#  register: execshardfunc
+#  ignore_errors: yes
+#  when: inventory_hostname == "mongo_route1"
+#- debug:
+#    msg: "{{ execshardfunc.stdout_lines }}"
+#  ignore_errors: yes
+#  when: inventory_hostname == "mongo_route1"

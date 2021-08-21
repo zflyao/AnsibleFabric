@@ -1,0 +1,22 @@
+# 安装 Chaincode
+# 可选命令行变量：
+# inventory -- Peer 服务器的 inventory，默认值 peer0.org1
+
+---
+
+- name: 实例化 Chaincode
+  hosts: "{{ inventory | default('peer0.org1') }}"
+  gather_facts: false
+  vars_files:
+    - 1_vars/common.yml  
+  tasks:
+  - include_vars:
+      file: 1_vars/chaincode.yml
+
+  - include_role:
+      name: fabric_cli
+    vars:
+      operation: instantiate_chaincode_list
+      channel: "{{ item }}"
+      chaincode_list: "{{ fabric_channels[item]['chaincodes'] }}"
+    loop: "{{ join_channels }}"

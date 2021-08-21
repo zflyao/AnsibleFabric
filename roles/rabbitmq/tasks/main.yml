@@ -1,0 +1,46 @@
+---
+# - debug: var=group_names
+# - debug:
+#     msg: "{{ group_names.0 }}"
+
+- name: 创建家目录
+  file:
+    path: "{{rabbitmq_home}}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"      
+
+- name: setting fact rabbitmq0 value
+  set_fact:
+    rabbitmq0: "mq0"
+
+- name: 确保docker开机自启
+  service:
+    name: docker
+    state: started
+    enabled: yes
+
+- name: 载入 RabbitMQ 镜像
+  import_role:
+    name: docker_image
+  vars:
+    harbor_project: midware
+    image_name: rabbitmq
+    image_tag: 3.8_management_20191106
+
+- name: 生成 docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ rabbitmq_home }}/docker-compose.yml"
+
+- name: 启动 rabbitmq 容器
+  # become: yes
+  # become_user: "{{ worker_user }}"
+  command: docker-compose -f {{ rabbitmq_home }}/docker-compose.yml up -d
+  tags:
+    - rebuild
+
+- include_tasks: cluster.yml
+  when: rabbit_count|int > 1
+
+- include_tasks: init.yml

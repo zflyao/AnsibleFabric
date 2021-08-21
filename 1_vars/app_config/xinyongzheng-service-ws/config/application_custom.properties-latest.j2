@@ -1,0 +1,24 @@
+##database config
+#spring.datasource.url=jdbc:postgresql://db2.org12.finrunchain.com:5432,db1.org12.finrunchain.com:5432/hbcc?targetServerType=master
+#spring.datasource.username=hbcc_user
+#spring.datasource.password=Hbcc@Hoperun
+
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+
+#mongodb
+hbcc.core.properties.mongodb.addresses={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+hbcc.core.properties.mongodb.database={{ instance_vars.mongodb_database }}
+#cache
+hbcc.cache.mongo.uri={{ mongodb_url }}/{{ instance_vars.mongodb_cache_database }}
+hbcc.cache.mongo.database={{ instance_vars.mongodb_cache_database }}
+
+#blockchian config
+blockChain.host={{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}
+blockChain.port={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+blockChain.channel={{ eco_name }}_{{ instance_vars.channel }}
+
+hbcc.core.properties.myChain.name={{ eco_name }}/{{ instance_vars.channel }}
+
+hbcc.core.properties.portalFlag=false

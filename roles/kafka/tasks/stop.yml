@@ -1,0 +1,11 @@
+---
+- name: 检测 kafka 容器是否正在运行
+  shell: docker ps -a -f name=^/{{ inventory_hostname }}$ | grep -o {{ inventory_hostname }}
+  register: container_ps
+  ignore_errors: yes
+
+- name: 停止 kafka 容器
+  command: docker-compose down
+  args:
+    chdir: "{{ kafka_home }}"
+  when: container_ps.rc == 0

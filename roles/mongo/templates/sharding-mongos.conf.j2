@@ -1,0 +1,7 @@
+fork=true
+configdb=config_rs/mongo-conf1.{{ domain }}:{{ mongodb_config_port | default ('27019') }},{{ mongo_conf2_dns }}:{{ mongodb_config_port | default ('27019') }},{{ mongo_conf3_dns }}:{{ mongodb_config_port | default ('27019') }}
+port={{ mongodb_mongos_port | default ('27020') }}
+pidfilepath={{ worker_home }}/mongodb/logs/mongos.pid
+logpath={{ worker_home }}/mongodb/logs/mongos.log
+maxConns=20000
+keyFile={{ worker_home }}/mongodb/auth/mongodb-keyfile

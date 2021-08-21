@@ -1,0 +1,38 @@
+---
+- include_tasks: stop.yml
+
+- import_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ fabric_harbor_project }}"
+    image_name: fabric-zookeeper
+    image_tag: "{{ fabric_thirdparty_version }}"
+
+- name: 创建 zk 家目录
+  file:
+    path: "{{ zk_home }}"
+    state: directory
+
+- name: 上传zookeeper-compose solo版配置文件
+  template:
+    src: solo.j2
+    dest: "{{ zk_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: cluster_count|int == 1
+
+- name: 上传zookeeper-compose 集群版配置文件
+  template: 
+    src: zk.j2
+    dest: "{{ zk_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: cluster_count|int > 1
+
+- name: 修改 docker-compose
+  replace:
+    path: "{{ zk_home }}/docker-compose.yml"
+    regexp: "{{ inventory_hostname }}: {{ ansible_ssh_host }}"
+    replace: "#{{ inventory_hostname }}: {{ ansible_ssh_host }}"
+
+- include_tasks: start.yml

@@ -1,0 +1,5 @@
+---
+- name: reload nginx
+#  become: yes
+#  become_user: "{{ worker_user }}"
+  command: "{{ worker_home }}/nginx/sbin/nginx -s reload"

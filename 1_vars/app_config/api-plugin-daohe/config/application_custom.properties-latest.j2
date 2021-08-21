@@ -1,0 +1,22 @@
+#version
+server.port={{ instance_vars.listen_port }}
+spring.application.name=plugins
+spring.application.version=1.1.0_daohe
+#database config
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+#mongo config
+mongodb.uri={{ mongodb_url[10:] }}
+mongodb.database={{ instance_vars.mongodb_database }}
+#FTP config
+hbcc.plugins.baichuan.ftp.server={{ thirdparty['baichuan_ftp'][env_src]['server'] | default(thirdparty['baichuan_ftp']['default']['server'] }}
+hbcc.plugins.baichuan.ftp.port={{ {{ thirdparty['baichuan_ftp'][env_src]['port'] | {{ thirdparty['baichuan_ftp']['default']['port'] }}
+hbcc.plugins.baichuan.ftp.username={{ thirdparty['baichuan_ftp'][env_src]['username'] | default(thirdparty['baichuan_ftp']['default']['username'] }}
+hbcc.plugins.baichuan.ftp.password={{ thirdparty['baichuan_ftp'][env_src]['password'] | default(thirdparty['baichuan_ftp']['default']['password'] }}
+#webservice config
+plugins.wsdlUrl=58.56.152.118:8090
+hbcc.plugins.job.user=false
+hbcc.plugins.job.price=true
+hbcc.plugins.baichuan.ftp.readAll=false
+ek.carmera.hls=http://112.74.246.204:15002

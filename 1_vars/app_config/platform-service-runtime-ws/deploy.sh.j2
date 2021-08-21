@@ -1,0 +1,58 @@
+#!/bin/bash
+
+APP_NAME=platform-service-runtime-ws
+INSTANCE_NAME={{ instance_name }}
+JAVA_HOME=/usr/java/jdk{{ java_version }}
+JAR_FILE=platform-service-runtime-ws-1.2.1-SNAPSHOT-exec-encrypted.jar
+WORK_DIR=$(cd $(dirname $0); pwd)
+LOG_DIR=$WORK_DIR/logs
+
+JAVA_OPTIONS="
+  {{ jvm_args }} \
+  -Dfile.encoding=UTF-8 -Duser.timezone=GMT+08 \
+  --spring.config.location=${WORK_DIR}/config/application.yml \
+  --logging.config=${WORK_DIR}/config/logback-spring.xml \
+  --logging.file=${WORK_DIR}/logs/platform.log
+"
+
+{% if instance_vars.tpa is defined and instance_vars.tpa %}
+TPA_OPTIONS="
+  -javaagent:/rsea/pinpoint-bootstrap-1.9.0-SNAPSHOT.jar \
+  -Dpinpoint.agentId=${APP_NAME} -Dpinpoint.applicationName=${APP_NAME}
+"
+{% endif %}
+
+startJava() {
+  $JAVA_HOME/bin/java $TPA_OPTIONS $JAVA_OPTIONS -jar $JAR_FILE &> $LOG_DIR/out.log &
+  if [ $? -eq 0 ]; then
+    echo $! > $LOG_DIR/run.pid
+  else
+    echo "Start Failed!"
+    exit 1
+  fi
+}
+
+stopJava() {
+  if [ -r $LOG_DIR/run.pid ]; then
+    PID=$(cat $LOG_DIR/run.pid)
+    ps -p $PID &>/dev/null
+    if [ $? -eq 0 ]; then
+      kill $PID && rm -f $LOG_DIR/run.pid && return 0
+    else
+      rm -f $LOG_DIR/run.pid
+    fi
+  fi
+  PID=$(ps -ef | grep $WORK_DIR | grep -v grep | awk '{ print $2 }')
+  if [ -z "$PID" ]; then
+    echo "$APP_NAME of $INSTANCE_NAME has stopped"
+  else
+    kill $PID
+  fi
+}
+
+###
+case $1 in
+  start)  startJava ;;
+  stop)   stopJava  ;;
+  *)      echo "Usage: $0 start|stop" ;;
+esac

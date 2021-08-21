@@ -1,0 +1,99 @@
+---
+- name: Disable SELinux
+  selinux:
+    state: disabled
+
+- name: 设置 sshd_config：UseDNS no
+  lineinfile:
+    dest: /etc/ssh/sshd_config
+    regexp: "^UseDNS"
+    line: "UseDNS no"
+    insertafter: EOF
+    state: present
+  register: sshd_config
+
+- name: Reload sshd
+  service:
+    name: sshd
+    state: reloaded
+  when: sshd_config.changed
+
+- name: 停用 firewalld
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: no
+
+- name: 设置 hostname
+  include_tasks: sethostname.yml
+  tags:
+  - hostname
+  - never
+ 
+- name: 设置时区
+  timezone:
+    name: Asia/Shanghai
+
+- name: 创建安装目录
+  file:
+    path: "{{ summary_dir }}/{{ item }}"
+    state: directory
+  loop:
+  - tools
+  - script
+
+- name: 配置组 {{ worker_group }} 和用户 {{ worker_user }}
+  import_tasks: user.yml
+
+- name: 配置 YUM 仓库
+  import_tasks: yum.yml
+  when: yum
+
+- name: 上传软件包
+  import_tasks: upload_gz.yml
+  when: not yum
+
+- name: 修改 pam 限制
+  pam_limits:
+    domain: '*'
+    limit_type: '-'
+    limit_item: "{{ item }}"
+    value: '655350'
+  loop:
+  - nproc
+  - nofile
+
+- name: 生成 sysctl.conf
+  template:
+    src: sysctl.conf.j2
+    dest: /etc/sysctl.conf
+    backup: yes
+  when:
+  - sysctl is defined
+  - sysctl | length > 0
+
+- name: 优化内核
+  command: sysctl -p
+  when:
+  - sysctl is defined
+  - sysctl | length > 0
+
+- name: 设置 Bash shell env PS1
+  lineinfile:
+    path: /etc/profile
+    regexp: '^export PS1='
+    line: export PS1='\[\e[1;35m\][\[\e[1;33m\]\u@\h \[\e[1;31m\]\w\[\e[1;35m\]]\$ \[\e[0m\]'
+
+- name: 设置 Bash shell env HISTTIMEFORMAT
+  lineinfile:
+    path: /etc/profile
+    regexp: '^export HISTTIMEFORMAT='
+    line: export HISTTIMEFORMAT="[%F %T][`whoami`][$(echo "$SSH_CLIENT" | cut -d' ' -f 1)] "
+
+- name: "目录属主设为{{ worker_user }}用户"
+  file:
+    path: "{{ worker_home }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes

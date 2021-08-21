@@ -1,0 +1,56 @@
+# 实例化 chaincode，需要提供 chaincode 的 ccname / version / lang / channel / policy
+---
+- name: 检查链码 {{ ccname }} 在通道 {{ channel }} 上是否已实例化
+  shell: >
+    docker exec cli-{{ inventory_hostname }} peer chaincode list --instantiated -C {{ channel }} 2>/dev/null | 
+     grep 'Name: {{ ccname }}'
+  register: instantiated
+  ignore_errors: true
+
+- name: 检查链码 {{ ccname }} 在通道 {{ channel }} 上已升级到目标版本
+  shell: >
+    docker exec cli-{{ inventory_hostname }} peer chaincode list --instantiated -C {{ channel }} 2>/dev/null | 
+     grep 'Name: {{ ccname }}, Version: {{ version }}'
+  register: updated
+  ignore_errors: true
+  when: instantiated.rc == 0
+   
+- debug:
+    msg: 链码 {{ ccname }} 在 {{ channel }} 上已实例化，且升级至了目标版本，忽略后续操作
+  when: (instantiated.rc == 0) and (updated.rc == 0)
+
+- name: 生成链码实例化脚本 {{ ccname }}_instantiate.sh
+  template:
+    src: chaincode_instantiate.sh.j2
+    dest: "{{ cli_home }}/tools/{{ ccname }}_instantiate.sh"
+    mode: 0755
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+  when: instantiated.rc != 0
+
+- name: 执行链码实例化 {{ ccname }}-{{ version }}
+  command: docker exec cli-{{ inventory_hostname }} /home/{{ ccname }}_instantiate.sh {{ channel }}
+  when: instantiated.rc != 0
+
+- name: 稍等~
+  wait_for:
+    timeout: 3
+  when: instantiated.rc != 0
+
+- name: 检查实例化结果
+  shell: >
+    docker exec cli-{{ inventory_hostname }} peer chaincode list --instantiated -C {{ channel }} 2>/dev/null |
+     grep 'Name: {{ ccname }}, Version: {{ version }}'
+  register: instantiate_result
+  when: instantiated.rc != 0
+
+- name: 返回结果
+  debug:
+    msg: 链码 {{ ccname }}-{{ version }} 在 {{ channel }} 上实例化成功！
+  when:
+  - instantiated.rc != 0
+  - instantiate_result.rc == 0
+
+- name: 已实例化但版本不一致，则执行升级操作
+  include_tasks: upgrade_chaincode.yml
+  when: (instantiated.rc == 0) and (updated.rc != 0)

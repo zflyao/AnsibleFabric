@@ -1,0 +1,43 @@
+---
+- name: 获取 deploy.sh 文件状态
+  stat:
+    path: "{{ work_dir }}/deploy.sh"
+  register: deploy_st
+  tags:
+  - stop
+  - restart
+
+- name: 获取 supervisor 文件状态
+  stat:
+    path: "{{ worker_home }}/supervisor/conf.d/{{ app_name }}-{{ instance_name }}.conf"
+  register: supervisor_st
+  when:
+  - (instance_vars.supervisor is defined) and instance_vars.supervisor
+  - deploy_st.stat.exists and deploy_st.stat.executable
+  tags:
+  - stop
+  - restart
+
+- name: Stop java by Supervisor
+  supervisorctl:
+    config: "{{ supervisor_conf }}"
+    name: "{{ app_id }}"
+    state: stopped
+  when:
+  - (instance_vars.supervisor is defined) and instance_vars.supervisor
+  - deploy_st.stat.exists and deploy_st.stat.executable
+  - supervisor_st.stat.exists
+  tags:
+  - stop
+  - restart
+
+- name: Stop java by script
+  command: ./deploy.sh stop 
+  args:
+    chdir: "{{ work_dir }}"
+  when:
+  - deploy_st.stat.exists and deploy_st.stat.executable
+  - (instance_vars.supervisor is undefined) or (not instance_vars.supervisor)
+  tags:
+  - stop
+  - restart

@@ -1,0 +1,16 @@
+##application config
+spring.application.name=hbcc-cloud
+spring.application.version=1.1.7
+##mongo config
+spring.data.mongodb.host={{ mongo_route1_dns }}
+#spring.data.mongodb.host={{ mongo_route2_dns }}
+spring.data.mongodb.port=27020
+spring.data.mongodb.database=mongo
+spring.data.mongodb.username=mongouser
+spring.data.mongodb.password=mongouser123
+##cache address
+hoperun.cache.hazelcast.address={{ hazelcast0_dns }}:5702,{{ hazelcast1_dns }}:5702
+hoperun.cache.hazelcast.groupName=test
+hoperun.cache.hazelcast.groupPasswd=test-pass
+#log
+logging.config={{ hbcccloud_dir }}/config/logback-spring.xml

@@ -1,0 +1,29 @@
+---
+- name: 创建nginx工作目录
+  file:
+    path: "{{ worker_home }}/{{ item }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0775
+  with_items:
+    - summary/tools
+    - nginx/conf/vhost
+
+- name: 检查 Ansible 控制机是否有二进制包
+  stat:
+    path: "{{ playbook_dir }}/summary_files/nginx/nginx-{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.tar.gz"
+  delegate_to: localhost
+  register: binary_pack
+
+- name: 没有二进制包则编译安装
+  include_tasks: compile.yml
+  when: not binary_pack.stat.exists
+
+- name: 有二进制包则上传
+  unarchive:
+    src: "{{ playbook_dir }}/summary_files/nginx/nginx-{{ ansible_distribution }}-{{ ansible_distribution_major_version }}.tar.gz"
+    dest: "{{ worker_home }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: binary_pack.stat.exists

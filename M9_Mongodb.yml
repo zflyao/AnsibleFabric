@@ -1,0 +1,9 @@
+# mongodb deploy 支持单机、复制集、切片三种架构
+# Use the -e input variable, eg："org= architect="
+# architect 部署架构参数为[single, replica, sharding]; 默认为replica
+---
+
+- name: mongodb
+  hosts: "org{{org}}_mongodb"
+  roles:
+  - role: mongo

@@ -1,0 +1,22 @@
+- name: Create Orderer's MSP directory
+  file:
+    path: "{{ worker_home }}/crypto-config/ordererOrganizations/"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+
+- name: Upload Orderer's MSP directory
+  synchronize:
+    src: "{{ env_src }}/crypto-config/ordererOrganizations/{{ orderer_domain }}"
+    dest: "{{ worker_home }}/crypto-config/ordererOrganizations/"
+    private_key: "{{ ansible_ssh_private_key_file }}"
+    delete: yes
+
+- name: "chown crypto-config to {{ worker_user }}"
+  file:
+    path: "{{ worker_home }}/crypto-config"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes       
+

@@ -1,0 +1,58 @@
+version: '3'
+services:
+  cli-{{ inventory_hostname }}:
+    container_name: cli-{{ inventory_hostname }}
+    image: {{ harbor_domain }}/{{ fabric_harbor_project }}/fabric-tools:{{ fabric_deploy_ver }}
+    tty: true
+    restart: always
+    environment:
+#      - FABRIC_LOGGING_SPEC=DEBUG
+      - CORE_PEER_ID=cli-{{ inventory_hostname }}
+{%if node_type == "orderer" %}
+      - CORE_PEER_LOCALMSPID={{ ord_mspid }}
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ orderer_domain }}/users/Admin@{{ orderer_domain }}/msp
+{% else %}
+      - CORE_PEER_LOCALMSPID={{ org_mspid }}
+      - CORE_PEER_MSPCONFIGPATH=/etc/hyperledger/fabric/crypto-config/peerOrganizations/{{ peer_domain }}/users/Admin@{{ peer_domain }}/msp
+      - CORE_PEER_ADDRESS={{ inventory_hostname_short }}.{{ peer_domain }}:7051
+{% endif %}
+      - CORE_PEER_TLS_ENABLED=true
+{% if node_type == "orderer" %}
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ orderer_domain }}/orderers/{{ inventory_hostname_short }}.{{ orderer_domain }}/tls/ca.crt
+{% else %}
+      - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/crypto-config/peerOrganizations/{{ peer_domain }}/peers/{{ inventory_hostname_short }}.{{ peer_domain }}/tls/ca.crt
+{% endif %}
+      - ORDERER_ADDRESS={{ default_orderer_host }}:{{ default_orderer_port }}
+      - ORDERER_CA=/etc/hyperledger/fabric/crypto-config/ordererOrganizations/{{ orderer_domain }}/tlsca/tlsca.{{ orderer_domain }}-cert.pem
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
+    command: /bin/bash
+    volumes:
+      - /var/run/:/host/var/run/
+      - {{ worker_home }}/crypto-config:/etc/hyperledger/fabric/crypto-config
+      - ./artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/artifacts
+      - ./tools/:/home
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    extra_hosts:
+{% for i in groups[org_name~'_peer'] %}
+      {{ hostvars[i]['inventory_hostname_short'] }}.{{ peer_domain }}: {{ hostvars[i]['ansible_ssh_host'] }}
+{% endfor %}
+{% if not own_orderer %}
+{% for each_o in groups[ord_name~'_orderer'] %}
+      {{ hostvars[each_o]['inventory_hostname_short'] }}.{{ orderer_domain }}: {{ hostvars[each_o]['slb'][conn_mode] | default(hostvars[each_o]['ansible_ssh_host'], true) }}
+{% endfor %}
+{% elif own_orderer and ord_name not in fabric_genesis_orgs.ords %}
+{% for each_o in groups[ord_name~'_orderer'] %}
+      {{ hostvars[each_o]['inventory_hostname_short'] }}.{{ orderer_domain }}: {{ hostvars[each_o]['ansible_ssh_host'] }}
+{% endfor %}
+{% for each_genesis_o in groups[fabric_genesis_orgs.ords[0]~'_orderer'] %}
+      {{ hostvars[each_genesis_o]['inventory_hostname_short'] }}.{{ hostvars[each_genesis_o]['orderer_domain'] }}: {{ hostvars[each_genesis_o]['slb'][conn_mode] | default(hostvars[each_genesis_o]['ansible_ssh_host'], true) }}
+{% endfor %}
+{% else %}
+{% for each_o in groups[ord_name~'_orderer'] %}
+      {{ hostvars[each_o]['inventory_hostname_short'] }}.{{ orderer_domain }}: {{ hostvars[each_o]['ansible_ssh_host'] }}
+{% endfor %}
+{% endif %}

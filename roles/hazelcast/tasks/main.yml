@@ -1,0 +1,85 @@
+---
+
+- name: 载入变量
+  include_vars: "../../../vars/{{ item }}.yml"
+  with_items:
+    - var
+    - dns
+    - hosts
+
+- name: 安装 hazelcast
+  unarchive:
+    src: hazelcast.tgz
+    dest: "{{ worker_home }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+
+- name: 确保原配置文件干净
+  file:
+    path: "{{ worker_home }}/hazelcast/bin/{{ item }}"
+    state: absent
+  with_items:
+    - hazelcast.xml
+    - log4j2.xml
+    - start.sh
+
+#- name: 上传配置文件和启动脚本
+#  template:
+#    src: "{{ item }}.j2"
+#    dest: "{{ worker_home }}/hazelcast/bin/{{ item }}"
+#    group: "{{ worker_user }}"
+#    owner: "{{ worker_user }}"
+#    mode: 0755
+#  with_items:
+#    - solo.xml
+#    - log4j2.xml
+#    - start.sh
+#  when: solo is defined
+
+- name: 上传配置文件和启动脚本
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ worker_home }}/hazelcast/bin/{{ item }}"
+    group: "{{ worker_user }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+    backup: yes
+  with_items:
+    - hazelcast.xml
+    - log4j2.xml
+    - start.sh
+#  when: solo is not defined
+
+- name: 确保 hazelcast 未启动
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: "{{ worker_home }}/hazelcast/bin/stop.sh"
+  args:
+    chdir: "{{ worker_home }}/hazelcast/bin/"
+  register: stop_out
+- debug:
+    msg: "{{ stop_out.stdout_lines }}"
+
+- name: 启动 hazelcast
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: nohup ./start.sh
+  args:
+    chdir: "{{ worker_home }}/hazelcast/bin/"
+  register: start_out
+- debug:
+    msg: "{{ start_out.stdout_lines }}"
+
+- name: 检查 hazelcast 进程
+  shell: ps -ef | grep java | grep -v grep
+  register: hazelcast_out
+  ignore_errors: true
+- debug:
+    msg: "{{ hazelcast_out.stdout_lines }}"
+
+- name: 检查 hazelcast 端口
+  shell: netstat -lntpu4 | grep java
+  register: hazelcast_port
+  ignore_errors: true
+- debug:
+    msg: "{{ hazelcast_port.stdout_lines }}"

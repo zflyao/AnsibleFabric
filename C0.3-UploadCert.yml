@@ -1,0 +1,10 @@
+# 该剧本用于上传 MSP 目录
+   
+- name: UPLOAD the MSP certs
+  hosts: "{{ inventory | default('*_orderer:*_peer') }}"
+  gather_facts: false
+  tasks:
+  - import_role:
+      name: fabric_cli
+    vars:
+      operation: upload_cert

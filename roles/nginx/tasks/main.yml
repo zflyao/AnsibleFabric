@@ -1,0 +1,75 @@
+---
+- name: 检查 nginx 状态
+  stat:
+    path: "{{ nginx_home }}/sbin/nginx"
+  register: nginx_register
+
+- name: Nginx 命令不存在，则安装 Nginx
+  include_tasks: install.yml
+  when: not nginx_register.stat.exists
+
+- name: 上传 nginx.conf
+  template:
+    src: nginx.conf.j2
+    dest: "{{ worker_home }}/nginx/conf/nginx.conf"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+
+- name: 上传 vhost 模板
+  template:
+    src: template_conf.j2
+    dest: "{{ worker_home }}/nginx/conf/vhost/_template"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0440
+    backup: yes
+#  notify: reload nginx
+
+- name: Templating nginx's app config files
+  template:
+    src: app.conf.j2
+    dest: "{{ nginx_home }}/conf/vhost/{{ app_name }}_{{ instance_name }}.conf"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+  tags:
+  - never
+  - appconfig
+  notify: reload nginx
+
+- name: copy 404 & error html
+  copy:
+    src: "{{ item }}.html"
+    dest: "{{ nginx_home }}/html/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  with_items:
+    - '404'
+    - error
+
+- name: 测试配置文件
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: "{{ worker_home }}/nginx/sbin/nginx -t"
+  register: nginx_test
+
+- debug:
+    msg: "{{nginx_test.stderr_lines}}"
+
+- name: 启动 nginx
+  become: yes
+  become_user: "{{ worker_user }}"
+  command: "{{ worker_home }}/nginx/sbin/nginx"
+  tags:
+    - rebuild
+
+- name: 检查nginx进程
+  shell: ps -ef | grep -v grep | grep nginx
+  register: nginx_process
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ nginx_process.stdout_lines }}"
+  tags:
+    - rebuild

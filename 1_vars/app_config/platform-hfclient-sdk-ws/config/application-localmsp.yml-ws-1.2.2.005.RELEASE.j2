@@ -1,0 +1,59 @@
+spring:
+  rabbitmq:
+      username: {{ rabbitmq_user }}
+      password: {{ rabbitmq_pass }}
+      addresses: {{ rabbitmq_address }}
+platform:
+  component:
+    apidoc.enable-swagger2: true
+    blockchain:
+      client:
+        endorseConditions:
+          - chaincode: {{ instance_vars.chaincode }}
+            matchOrgCount: 1
+        cryptoType: {% if fabric_crypto_type == 'sm2' %}SM2{% else %}ECDSA{% endif %}    
+        blockchainLedger1CallbackType: AMQP
+        hyperledgerFabricSdkVersion: 1.4.0
+        blockchainExchangeName: {{ instance_vars.rabbitmq_exchange }}
+        invokeWaitTime: 32000
+        deployWaitTime: 120000
+        proposalWaitTime: 250000
+        callbackServerName: {{ inventory_hostname }}
+        platformParams:
+          channelName: {{ instance_vars.channel }}
+          ordererOrganizationName: {{ orderer_domain }}
+          peerOrganizationName: {{ peer_domain }}
+          businessCircleName: current.info
+          username: Admin@{{ peer_domain }}
+        channels:
+          - name: {{ instance_vars.channel }}
+            cryptoConfigPath: /home/blockchain/crypto-config
+            businessCircles:
+            - name: current.info
+              chaincodeName: {{ instance_vars.chaincode }}
+              chaincodePath: todo
+              chaincodeVersion: {{ cc_version.0 }}
+              chaincodeInputStream: todo
+              chaincodeSourceLocation: 
+              chaincodeEndorsementPolicyLocation: todo
+              chaincodeLedgerVersion: {{ standard_cc[instance_vars.chaincode]['ledgerversion'] }}
+            ordererOrganizations:
+            - name: {{ orderer_domain }}
+              orderers:
+              - name: orderer{{ server_id }}.{{ orderer_domain }}
+                location: grpcs://orderer{{ server_id }}.{{ orderer_domain }}:{% if own_orderer and ord_mspid != "Orderer1MSP" %}7050{% else %}700{{ server_id | int + 1 }}{% endif %} 
+                domain: {{ orderer_domain }}
+            peerOrganizations:
+            - name: {{ peer_domain }}
+              peers:
+              - name: peer{{ server_id }}.{{ peer_domain }}
+                peerLocation: grpcs://peer{{ server_id }}.{{ peer_domain }}:7051
+                domain: {{ peer_domain }}
+              admins:
+              - name: Admin@{{ peer_domain }}
+                enrollToken: todo
+                mspid: {{ org_mspid }}
+              users:
+              - name: User1@{{ peer_domain }}
+                enrollToken: todo
+                mspid: {{ org_mspid }}

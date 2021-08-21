@@ -1,0 +1,4 @@
+---
+
+# - debug: var=group_names
+- import_tasks: "{{ operation }}.yml"

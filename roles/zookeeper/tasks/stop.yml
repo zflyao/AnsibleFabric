@@ -1,0 +1,13 @@
+---
+- name: 检查 zookeeper 容器是否启动
+  shell: docker ps -a -f name=^/{{ inventory_hostname }} | grep -o {{ inventory_hostname }}
+  args:
+    warn: no
+  register: container_ps
+  ignore_errors: yes
+
+- name: 停止 zookeeper 容器
+  command: docker-compose down
+  args:
+    chdir: "{{ zk_home }}"
+  when: container_ps.rc == 0

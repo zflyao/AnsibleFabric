@@ -1,0 +1,24 @@
+# 用法：
+# 1. 修改 group_vars/all.yml 中的 fabric_channels，在对应通道的后面添加待加入的组织名称 {{ addorg }}；
+# 2. 修改待加入组织的组变量 group_vars/{{ addorg }}.yml 的 join_channels，添加需要加入的通道；
+# 3. 命令行变量 channel 指定待加入的通道；addorg 指定待加入的组织名称。
+# 示例：ansible-playbook -e channel=channelexample -e addorg=org3 C3.1-MembershipPeer.yml
+
+- name: 设置变量 adminpeer
+  hosts: localhost
+  gather_facts: false
+  tasks:
+  - set_fact:
+      adminpeer: "peer0.{{ fabric_genesis_orgs['orgs'][0] }}"
+
+- name: 将组织 {{ addorg }} 添加到通道 {{ channel }}
+  hosts: "{{ hostvars['localhost']['adminpeer'] }}"
+  gather_facts: false
+  tasks:
+  - include_role:
+      name: fabric_cli
+    vars:
+      operation: membership_peer
+      peer_domain: "{{ hostvars['peer0.'~addorg]['peer_domain'] }}"
+      org_mspname: "{{ hostvars['peer0.'~addorg]['org_mspname'] }}"
+      org_mspid: "{{ hostvars['peer0.'~addorg]['org_mspid'] }}"

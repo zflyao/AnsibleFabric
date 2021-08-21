@@ -1,0 +1,16 @@
+---
+
+worker_user: blockchain
+worker_group: blockchain
+worker_home: "/home/{{ worker_user }}"
+summary_dir: "{{ worker_home }}/summary"
+
+# Supervisor Variables
+supervisor_dir: "{{ worker_home }}/supervisor"
+supervisor_conf_dir: "{{ supervisor_dir }}/conf.d"
+supervisor_user: "{{ worker_user }}"
+supervisor_socket: "{{ supervisor_dir }}/supervisor.sock"
+supervisor_pidfile: "{{ supervisor_dir }}/supervisord.pid"
+supervisor_log_path: /var/log/supervisord
+supervisor_log_file: "{{ supervisor_log_path }}/supervisord.log"
+supervisor_http_port: 9000

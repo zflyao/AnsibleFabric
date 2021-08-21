@@ -1,0 +1,168 @@
+#---------------------------------------------------------------------
+# Example configuration for CCB Blockchain
+# 托管区-互联网DMZ
+#---------------------------------------------------------------------
+ 
+#---------------------------------------------------------------------
+# Global settings
+#---------------------------------------------------------------------
+global
+    log         127.0.0.1 local0 info
+ 
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn    65535 
+    user        haproxy
+    group       haproxy
+    daemon
+ 
+    # turn on stats unix socket
+    stats socket /var/lib/haproxy/stats
+ 
+#---------------------------------------------------------------------
+# common defaults that all the 'listen' and 'backend' sections will
+# use if not designated in their block
+#---------------------------------------------------------------------
+defaults
+    mode                    tcp
+    log                     global
+    option                  tcplog
+    option                  dontlognull
+   #option http-server-close
+    option tcpka
+#    option forwardfor       except 127.0.0.0/8
+    option                  redispatch
+    retries                 3
+    timeout http-request    900s
+    timeout queue           30m
+    timeout connect         30m
+    timeout client          30m
+    timeout server          30m
+    timeout client-fin      3s
+    timeout tunnel          24h
+    timeout server-fin      3s
+    timeout tarpit          900s
+#    timeout connect         365d
+#    timeout client          365d
+#    timeout server          365d
+ 
+    timeout http-keep-alive 900s
+    timeout check           10s
+    maxconn                 65535
+#    option forwardfor
+ 
+#---------------------------------------------------------------------
+#统计界面
+#---------------------------------------------------------------------
+listen stats
+    mode http
+    bind 0.0.0.0:1080
+    stats enable
+    stats hide-version
+    stats uri     /haproxy
+    stats realm   Haproxy\ Statistics
+    stats auth    admin:admin
+    stats admin if TRUE
+ 
+#---------------------------------------------------------------------
+# nginx
+#---------------------------------------------------------------------
+frontend nginx
+    bind *:{{ nginx_http }}
+    mode http
+    default_backend nginx
+ 
+backend nginx
+    mode http
+	balance     roundrobin
+    default-server inter 2s fastinter 1s downinter 5s slowstart 60s rise 2 fall 5 weight 30
+    server nginx1 {{ hostvars['nginx1'].ansible_ssh_host }}:{{ nginx_http }} check maxconn 2000
+    server nginx2 {{ hostvars['nginx2'].ansible_ssh_host }}:{{ nginx_http }} check maxconn 2000
+    server nginx3 {{ hostvars['nginx3'].ansible_ssh_host }}:{{ nginx_http }} check maxconn 2000
+	
+frontend HBCC_cloud
+    bind *:4040
+    mode tcp
+    default_backend HBCC_cloud
+ 
+backend HBCC_cloud
+    mode tcp
+	balance     roundrobin
+    default-server inter 2s fastinter 1s downinter 5s slowstart 60s rise 2 fall 5 weight 30
+    server nginx1 {{ hostvars['nginx1'].ansible_ssh_host }}:4040 check maxconn 2000
+    server nginx2 {{ hostvars['nginx2'].ansible_ssh_host }}:4040 check maxconn 2000
+    server nginx3 {{ hostvars['nginx3'].ansible_ssh_host }}:4040 check maxconn 2000
+#---------------------------------------------------------------------
+# kafka
+#---------------------------------------------------------------------
+frontend kafka1_front
+    bind *:9001
+    mode tcp
+    default_backend kafka1_backend
+ 
+backend kafka1_backend
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server kafka1_back1 {{ hostvars['kafka1'].ansible_ssh_host }}:9001 check maxconn 4000
+ 
+frontend kafka2_front
+    bind *:9002
+    mode tcp
+    default_backend kafka2_backend
+ 
+backend kafka2_backend
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server kafka2_back1 {{ hostvars['kafka2'].ansible_ssh_host }}:9002 check maxconn 2000
+ 
+frontend kafka3_front
+    bind *:9003
+    mode tcp
+    default_backend kafka3_backend
+ 
+backend kafka3_backend
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server kafka3_back1 {{ hostvars['kafka3'].ansible_ssh_host }}:9003 check maxconn 2000
+	
+frontend kafka4_front
+    bind *:9004
+    mode tcp
+    default_backend kafka4_backend
+ 
+backend kafka4_backend
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server kafka3_back1 {{ hostvars['kafka4'].ansible_ssh_host }}:9004 check maxconn 2000
+#---------------------------------------------------------------------
+# orderer
+#---------------------------------------------------------------------
+frontend orderer0
+    bind *:7001
+    mode tcp
+    default_backend orderer0
+ 
+backend orderer0
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server orderer0 {{ hostvars['orderer0'].ansible_ssh_host }}:7001 check maxconn 2000
+
+frontend orderer1
+    bind *:7002
+    mode tcp
+    default_backend orderer1
+ 
+backend orderer1
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server orderer1 {{ hostvars['orderer1'].ansible_ssh_host }}:7002 check maxconn 2000
+
+frontend orderer2
+    bind *:7003
+    mode tcp
+    default_backend orderer2
+
+backend orderer2
+#    balance     roundrobin
+    default-server inter 10s fastinter 10s downinter 30s slowstart 60s rise 2 fall 5 weight 30
+    server orderer1 {{ hostvars['orderer2'].ansible_ssh_host }}:7003 check maxconn 2000

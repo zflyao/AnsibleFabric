@@ -1,0 +1,17 @@
+- name: Install required packages
+  hosts: "{{ inventory | default('dyck_unique') }}"
+  gather_facts: false
+  tasks:
+  - name: Copy
+    copy:
+      src: "{{ playbook_dir }}/summary_files/common/basesoft/{{ item }}"
+      dest: /tmp/
+    loop:
+    - rsync-3.0.9-18.el7.x86_64.rpm
+    - telnet-0.17-64.el7.x86_64.rpm
+    - net-tools-2.0-0.22.20131004git.el7.x86_64.rpm
+
+  - name: Install
+    command: "rpm -ivh --force /tmp/*.rpm"
+    args:
+      warn: false

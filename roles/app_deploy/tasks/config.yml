@@ -1,0 +1,98 @@
+- name: 创建子目录
+  file:
+    path: "{{ work_dir }}/{{ item }}"
+    state: directory
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+  loop: "{{ sub_directories }}"
+  when: sub_directories | length > 0
+
+- name: 生成配置文件
+  template:
+    src: "{{ playbook_dir }}/1_vars/app_config/{{ app_name }}/{{ item.path }}{% if item.versioned is defined and item.versioned %}-{{ version }}{% endif %}.j2"
+    dest: "{{ work_dir }}/{{ item.path }}"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+  loop: "{{ config_files | union(instance_configs) }}"
+  when:
+  - config_files | length > 0
+  - (item.from_var is undefined) or (not item.from_var)
+  - (item.unchanged is undefined) or (not item.copy)
+
+- name: 复制文件
+  copy:
+    src: "{{ playbook_dir }}/1_vars/app_config/{{ app_name }}/{{ item.path }}"
+    dest: "{{ work_dir }}/{{ item.path }}"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+  loop: "{{ config_files | union(instance_configs) }}"
+  when:
+  - config_files | length > 0
+  - item.unchanged is defined
+  - item.unchanged
+    
+- name: 从变量中生成配置文件
+  copy:
+    content: "{{ vars[item.from_var] }}"
+    dest: "{{ work_dir }}/{{ item.path }}"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+  loop: "{{ config_files | union(instance_configs) }}"
+  when: 
+  - config_files | length > 0
+  - item.from_var is defined
+
+- name: 给脚本添加可执行权限
+  file:
+    path: "{{ work_dir }}/{{ item.path }}"
+    state: touch
+    mode: '0755'
+  loop: "{{ config_files | union(instance_configs) }}"
+  when: 
+  - config_files | length > 0
+  - item.executable is defined and item.executable
+
+- name: 获取此版本配置的真实文件名并创建软链接
+  include_tasks: config-link.yml
+  vars:
+    pattern: "{{ item.link_pattern }}"
+    src_path: "{{ item.path }}"
+  loop: "{{ config_files | union(instance_configs) }}"
+  when:
+  - config_files | length > 0
+  - item.link_pattern is defined and item.link_pattern
+
+- name: docker 类型应用检查 docker-compose.yml-{{ version }}.j2 是否存在
+  stat:
+    path: "{{ playbook_dir }}/1_vars/app_config/{{ app_name }}/docker-compose.yml-{{ version }}.j2"
+  register: composeversion
+  when: app_type == "docker"
+  delegate_to: localhost
+
+- name: docker 类型应用生成 docker-compose 文件
+  template:
+    src: "{{ playbook_dir }}/1_vars/app_config/{{ app_name }}/docker-compose.yml{% if composeversion.stat.exists %}-{{ version }}{% endif %}.j2"
+    dest: "{{ work_dir }}/docker-compose.yml"
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+  when: app_type == "docker"
+
+- name: 生成应用 Supervisor 配置
+  template:
+    src: supervisor_app.conf.j2
+    dest: /home/{{ worker_user }}/supervisor/conf.d/{{ app_name }}-{{ instance_name }}.conf
+    owner: "{{ worker_user }}"
+    group: "{{ worker_group }}"
+  when: (instance_vars.supervisor is defined) and instance_vars.supervisor
+
+- name: 使 Supervisor 配置生效
+  supervisorctl:
+    config: "{{ supervisor_conf }}"
+    name: "{{ app_id }}"
+    state: restarted
+  when: (instance_vars.supervisor is defined) and instance_vars.supervisor
+#- name: 配置主机 /etc/hosts
+#  lineinfile:
+#    path: /etc/hosts
+#    regexp: ^
+#  when: hosts | length > 0

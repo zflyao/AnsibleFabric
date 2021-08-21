@@ -1,0 +1,70 @@
+---
+
+- name: 创建模块目录
+  file:
+    path: "{{ item }}"
+    state: directory
+  with_items:
+    - "{{ summary_dir }}/tools"
+    - "{{ zabbixagent_home }}/module"
+
+- name: 检查zabbix-agent是否安装
+  shell: rpm -qa|grep zabbix-agent
+  register: zabbixagent_status
+  failed_when: zabbixagent_status.rc == 0
+ 
+- name: 上传zabbix-agent安装包
+  copy:
+    src: ../../../summary_files/zabbix-agentd/zabbix-agent-3.4.1-1.el7.x86_64.rpm
+    dest: "{{ summary_dir }}/tools"
+    mode: 0755
+  
+
+- name: 安装zabbix-agent  
+  yum:
+    name: "{{ summary_dir }}/tools/zabbix-agent-3.4.1-1.el7.x86_64.rpm"
+    state: present
+
+
+- name: 分发脚本与模块文件
+  copy:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: '../files/zabbix_module_docker.so', dest: '{{ zabbixagent_home }}/module' }
+    - { src: '../files/userparameter_business.conf', dest: '{{ zabbixagent_home }}/zabbix_agentd.d' }
+    - { src: '../files/userparameter_docker.conf', dest: '{{ zabbixagent_home }}/zabbix_agentd.d' }
+    - { src: '../files/zabbix_docker_network.sh', dest: '{{ zabbixagent_home }}/zabbix_agentd.d' }
+
+
+- name: 获取主机名
+  setup:
+    filter: ansible_hostname
+
+- name: 分发zabbix-agentd.conf配置文件
+  template:
+    src: zabbix_agentd.conf.j2
+    dest: "{{ zabbixagent_home }}/zabbix_agentd.conf"
+
+- name: 检查docker是否安装
+  shell: awk -F ':' '/docker/{print $ 1}' /etc/group
+  register: docker_status
+
+- name: 将zabbix加入docker组
+  shell: usermod -a -G docker zabbix
+  when: docker_status.stdout is defined and docker_status.stdout == 'docker'
+
+- name: 启动并确保zabbix-agent开机自启
+  service:
+    name: zabbix-agent
+    state: started
+    enabled: yes
+
+- name: 查看zabbix-agentd进程
+  shell: ps -ef|grep zabbix_agentd
+  register: start_status
+- debug:
+    msg: "{{ start_status.stdout_lines }}"
+
+
+#检查agent.ping

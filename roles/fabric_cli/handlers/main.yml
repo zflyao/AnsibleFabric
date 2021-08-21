@@ -1,0 +1,4 @@
+- name: restart cli container
+  command: docker-compose up -d --force
+  args:
+    chdir: "{{ cli_home }}"

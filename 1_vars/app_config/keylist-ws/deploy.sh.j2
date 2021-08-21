@@ -1,0 +1,52 @@
+#!/bin/bash
+
+APP_NAME={{ app_name }}
+INSTANCE_NAME={{ instance_name }}
+JAVA_HOME=/usr/java/jdk{{ java_version }}
+WORK_DIR=$(cd $(dirname $0); pwd)
+LOG_DIR=$WORK_DIR/logs
+CLASSPATH=$WORK_DIR/lib/keylist-ws-1.0.0-SNAPSHOT.jar
+MAINCLASS=com.hoperun.scfs.keylist.ws.Launcher
+
+JAVA_OPTIONS="{{ jvm_args }} \
+  -Dfile.encoding=UTF-8 -Duser.timezone=GMT+08 \
+  -Droot.path=$WORK_DIR -Djava.ext.dirs=$WORK_DIR/lib"
+
+{% if instance_vars.tpa is defined and instance_vars.tpa %}
+TPA_OPTIONS="-javaagent:/rsea/pinpoint-bootstrap-1.9.0-SNAPSHOT.jar -Dpinpoint.agentId=${APP_NAME} -Dpinpoint.applicationName=${APP_NAME}"
+{% endif %}
+
+startJava() {
+  nohup $JAVA_HOME/bin/java $TPA_OPTIONS $JAVA_OPTIONS -cp $CLASSPATH $MAINCLASS &> $LOG_DIR/out.log &
+  if [ $? -eq 0 ]; then
+    echo $! > $LOG_DIR/run.pid
+  else
+    echo "Start Failed!"
+    exit 1
+  fi
+}
+
+stopJava() {
+  if [ -r $LOG_DIR/run.pid ]; then
+    PID=$(cat $LOG_DIR/run.pid)
+    ps -p $PID &>/dev/null
+    if [ $? -eq 0 ]; then
+      kill $PID && rm -f $LOG_DIR/run.pid && return 0
+    else
+      rm -f $LOG_DIR/run.pid
+    fi
+  fi
+  PID=$(ps -ef | grep $WORK_DIR | grep -v grep | awk '{ print $2 }')
+  if [ -z "$PID" ]; then
+    echo "$APP_NAME of $INSTANCE_NAME has stopped"
+  else
+    kill $PID
+  fi
+}
+
+###
+case $1 in
+  start)  startJava ;;
+  stop)   stopJava  ;;
+  *)      echo "Usage: $0 start|stop" ;;
+esac

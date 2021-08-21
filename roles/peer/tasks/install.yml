@@ -1,0 +1,44 @@
+---
+- include_tasks: stop.yml
+- include_tasks: clear.yml
+
+- name: 载入 peer 镜像
+  import_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ fabric_harbor_project }}"
+    image_name: fabric-peer
+    image_tag: "{{ fabric_deploy_ver }}"
+
+- name: 载入 nodeenv 镜像
+  import_role:
+    name: docker_image
+  vars:
+    harbor_project: "{{ cc_harbor_project }}"
+    image_name: fabric-nodeenv
+    image_tag: "{{ cc_nodeevn_tag | default(fabric_deploy_ver) }}"
+
+- name: 创建 peer 目录
+  file:
+    path: "{{ item }}"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  loop:
+  - "{{ fabric_home }}"
+  - "{{ fabric_data }}"  
+
+- name: 生成 docker-compose.yml
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ fabric_home }}/docker-compose.yml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"      
+
+- name: comment out IP of current node
+  replace:
+    path: "{{ fabric_home }}/docker-compose.yml"
+    regexp: "{{ inventory_hostname_short }}.{{ peer_domain }}: {{ ansible_ssh_host }}"
+    replace: "#{{ inventory_hostname_short }}.{{ peer_domain }}: {{ ansible_ssh_host }}"
+
+- include_tasks: start.yml

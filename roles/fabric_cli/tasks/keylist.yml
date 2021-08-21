@@ -1,0 +1,26 @@
+---
+- name: upload keylist.sh
+  copy:
+    src: keylist.sh
+    dest: "{{ cli_home }}/tools/keylist.sh"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+
+- name: Run peer invoke to get keylist
+  shell: docker exec cli-peer0.{{ org }} sh -c '/home/keylist.sh {{ channel }} {{ cc.name }}'
+  loop: "{{ chaincode_list }}"
+  loop_control:
+    loop_var: cc
+  when:
+  - standard_cc[cc.name]['getKeys'] is defined
+  - standard_cc[cc.name]['getKeys']
+  register: result
+
+- debug:
+    msg: "{{ res['stderr_lines'][-1] }}"
+  loop: "{{ result.results }}"
+  loop_control:
+    loop_var: res
+    label: "Channel: {{ channel }}, Chaincode: {{ res.cc.name }}"

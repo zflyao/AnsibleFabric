@@ -1,0 +1,7 @@
+---
+
+- name: docker login
+  command: docker login {{ harbor_domain }} -u {{ harbor_user }} -p {{ harbor_passwd }}
+
+- name: pull 镜像
+  command: docker pull {{ harbor_domain }}/{{ harbor_project }}/{{ image_name }}:{{ image_tag }}

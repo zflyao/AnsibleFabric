@@ -1,0 +1,17 @@
+---
+
+fabric_harbor_project: hyperledger
+
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+zk_home: "{{ worker_home }}/{{ inventory_hostname }}"
+#zk:
+#  zookeeper1: {'client': '2181', 'cluster': '2888', 'leader': '3888'}
+#  zookeeper2: {'client': '12181', 'cluster': '12888', 'leader': '13888'}
+#  zookeeper3: {'client': '2181', 'cluster': '2888', 'leader': '3888'}
+#  zookeeper4: {'client': '12181', 'cluster': '12888', 'leader': '13888'}
+#  zookeeper5: {'client': '2181', 'cluster': '2888', 'leader': '3888'}
+
+cluster_count: "{{ groups['zookeeper'] | length }}"
+id: "{{ inventory_hostname | regex_search('\\d+') }}"

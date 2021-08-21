@@ -1,0 +1,26 @@
+---
+
+- import_tasks: yum.yml
+  when: yum
+  tags: install
+
+- import_tasks: upload_gz.yml
+  when: not yum
+  tags: install
+
+- name: 安装docker-compose
+  copy: 
+    src: "{{ playbook_dir }}/summary_files/docker/docker-compose"
+    dest: /usr/bin/docker-compose
+    mode: 0755
+
+- name: "{{ worker_user }}加入docker组"
+  user: 
+    name: "{{ worker_user }}"
+    groups: docker
+
+- name: 启动docker
+  service:
+    name: docker
+    state: started
+    enabled: yes

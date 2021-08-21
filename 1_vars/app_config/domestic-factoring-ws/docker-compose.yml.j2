@@ -1,0 +1,40 @@
+version: '2'
+
+services:
+  domestic-factoring_{{ instance_name }}:
+    container_name: domestic-factoring_{{ instance_name }}
+    image: {{ harbor_domain }}/{{ docker_image_project }}/{{ docker_image_name }}:{{ version }}
+    restart: always
+    working_dir: /home/blockchain/{{ app_name }}/
+    environment:
+      - LANG=en_US.UTF-8
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./config/application_custom.properties:/home/blockchain/{{ app_name }}/config/application_custom.properties
+      - ./config/rsa_pri_0.pem:/home/blockchain/{{ app_name }}/config/rsa_pri_0.pem
+      - ./config/rsa_pub_0.pem:/home/blockchain/{{ app_name }}/config/rsa_pub_0.pem
+      - ./logs:/home/blockchain/{{ app_name }}/logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+      - {{ instance_vars.listen_port }}:{{ instance_vars.listen_port }}
+    extra_hosts:
+# PostgresQL
+      db0.{{ peer_domain }}: {{ hostvars['db0.'~org_name]['ansible_ssh_host'] }}
+# MongoDB
+{% for each_mongo in groups[org_name~"_mongodb"] %}
+      {{ each_mongo }}.{{ peer_domain }}: {{ hostvars[each_mongo]['ansible_ssh_host'] }}
+{% endfor %}
+# RabbitMQ
+{% for each_mq in groups[org_name~'_rabbitmq'] %}
+      {{ each_mq }}.{{ peer_domain }}: {{ hostvars[each_mq]['ansible_ssh_host'] }}
+{% endfor %}
+# ApiSDK
+      {{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}: {{ slb['inner'] | default(hostvars['api0.'~org_name]['ansible_ssh_host'], true) }}
+# Keylist
+      {{ instances[instance_name]['keylist-ws']['domain'] }}: {{ slb['inner'] | default(hostvars['keylist0.'~org_name]['ansible_ssh_host'], true) }}
+# Platform
+      {{ instances[instance_name]['platform-service-runtime-ws']['domain'] }}: {{ slb['inner'] | default(hostvars['platform0.'~org_name]['ansible_ssh_host'], true) }}

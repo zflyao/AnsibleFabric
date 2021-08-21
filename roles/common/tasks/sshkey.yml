@@ -1,0 +1,29 @@
+---
+- name: 确认本地输出目录存在
+  file:
+    path: "{{ playbook_dir }}/{{ env_src }}/sshkey/"
+    state: directory
+  delegate_to: localhost
+  run_once: True
+  tags: create
+
+- name: 本地创建 ssh 公私钥对
+  openssh_keypair:
+    path: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+  delegate_to: localhost
+  run_once: True
+  tags: create
+
+- name: 部署 ssh 公钥
+  authorized_key:
+    user: "{{ ansible_ssh_user }}"
+    key: "{{ lookup('file', ansible_ssh_private_key_file ~ '.pub') }}"
+    state: present
+  tags: deploy
+
+# - name: 部署 ssh 公钥
+#   authorized_key:
+#     user: "{{ ansible_ssh_user }}"
+#     key: "{{ lookup('file', playbook_dir ~ '/inventory-Hoke/sshkey/id_rsa.pub') }}"
+#     state: present
+#   tags: always

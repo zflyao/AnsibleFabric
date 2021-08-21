@@ -1,0 +1,7 @@
+---
+# Use mongoimport to import JSON files to MongoDB
+- name: Upload json files to server
+  copy: 
+  
+- name: import files to MongoDB
+  

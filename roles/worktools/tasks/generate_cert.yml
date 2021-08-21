@@ -1,0 +1,114 @@
+---
+
+- set_fact:
+    ord_id: 1
+  when: not ordorg
+
+- name: 创建 tools 目录
+  file:
+    path: "{{ fabric_home }}/tools"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: copy cryptotool
+  copy:
+    src: cryptotool
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+
+- name: "copy V{{fabric_deploy_ver}} bin"
+  copy:
+    src: "bin_v{{fabric_deploy_ver}}/"
+    dest: "{{ fabric_home }}/tools/cryptotool/linux-amd64/bin/"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+
+- name: 生成crypto-config.yaml配置文件
+  template:
+    src: generate/crypto-config.yaml.j2
+    dest: "{{ fabric_home }}/tools/crypto-config-org{{org_id}}.yaml"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0600
+
+- name: 生成证书制作脚本
+  template:
+    src: generate/generate_cert.sh
+    dest: "{{ fabric_home }}/tools"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    backup: yes
+    mode: 0755
+
+- name: 判断证书是否已存在
+  stat:
+    path: "{{ lookup('env', 'PWD') }}/{{ env_src }}/crypto-config/peerOrganizations/org{{ org_id }}.{{ fabric_domain }}"
+  delegate_to: localhost
+  register: dir_exist
+  tags: always
+
+- name: rsync to the dest on the localhost when localhost dir exist
+  command: rsync -e "ssh -i {{ lookup('env', 'PWD') }}/summary_files/common/sshkey/id_rsa_1024_root"  -avz --delete {{ lookup('env', 'PWD') }}/{{ env_src }}/crypto-config root@{{hostvars['peer0.org1'].ansible_ssh_host}}:{{ fabric_home }}/tools
+  delegate_to: localhost
+  register: rsync_result
+  tags: rsyncpush
+  when: dir_exist.stat.exists
+
+- debug: 
+    msg: "{{ rsync_result.stdout_lines }}"
+  tags: rsyncpush
+  when: dir_exist.stat.exists
+
+- name: chown -R
+  file:
+    path: "{{ fabric_home }}/tools/crypto-config"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes
+  when: dir_exist.stat.exists
+
+- name: 确保证书目录环境干净
+  file:
+    path: "{{ fabric_home }}/tools/crypto-config/{{ item }}"
+    state: absent
+  with_items:
+    - ordererOrganizations/ord{{ ord_id }}.{{ fabric_domain }}
+    - peerOrganizations/org{{ org_id }}.{{ fabric_domain }}
+  when: not dir_exist.stat.exists
+
+- name: 生成fabric证书
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash generate_cert.sh crypto-config-org{{org_id}}.yaml
+  register: generate_cert
+  args: 
+    chdir: "{{ fabric_home }}/tools"
+  when: not dir_exist.stat.exists    
+
+- debug: 
+    msg: "{{ generate_cert.stdout_lines }}"
+  when: not dir_exist.stat.exists    
+
+#- name: Synchronization of src on the inventory host to the dest on the localhost in pull mode
+#  synchronize:
+#    mode: pull
+#    src: "{{ fabric_home }}/tools/crypto-config"
+#    dest: "{{ env_src }}"
+#    private_key: "{{ lookup('env', 'PWD') }}/summary_files/common/sshkey/id_rsa_1024_root"
+#    delete: yes
+#    recursive: yes
+
+- name: rsync to the dest on the localhost
+  command: rsync -e "ssh -i {{ lookup('env', 'PWD') }}/summary_files/common/sshkey/id_rsa_1024_root"  -avz --delete root@{{hostvars['peer0.org1'].ansible_ssh_host}}:{{ fabric_home }}/tools/crypto-config {{ lookup('env', 'PWD') }}/{{ env_src }}
+  delegate_to: localhost
+  register: rsync_result
+  tags: rsyncpull
+
+- debug: 
+    msg: "{{ rsync_result.stdout_lines }}"  
+  tags: rsyncpull

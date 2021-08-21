@@ -1,0 +1,91 @@
+version: '2'
+services:
+  {{ inventory_hostname }}:
+    container_name: {{ inventory_hostname }}
+    image: {{ harbor_domain }}/{{ fabric_harbor_project }}/fabric-orderer:{{ fabric_deploy_ver }}
+    restart: always
+    environment:
+      # 阿里云所需参数
+      - GODEBUG=netdns=go
+      #--------------------
+      - ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+      - ORDERER_GENERAL_GENESISMETHOD=file
+      - ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+      - ORDERER_GENERAL_LOCALMSPID={{ ord_mspid }}
+      - ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+      # enabled TLS
+      - ORDERER_GENERAL_TLS_ENABLED=true
+      - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+{% if fabric_orderer_type == "etcdraft" %}
+      - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+      - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+      - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+{% else %}     
+      # enabled kafka client TLS
+      - ORDERER_KAFKA_VERBOSE=true
+      - ORDERER_KAFKA_TLS_ENABLED=true
+{% if fabric_minor_ver | int == 0 %}
+# fabric_v1.0
+      - ORDERER_GENERAL_LOGLEVEL=debug
+      - ORDERER_KAFKA_SERVER=kafkaserver
+      - ORDERER_KAFKA_TLS_PRIVATEKEY=/var/hyperledger/orderer/kafka/tls/client.key
+      - ORDERER_KAFKA_TLS_CERTIFICATE=/var/hyperledger/orderer/kafka/tls/client.crt
+      - ORDERER_KAFKA_TLS_ROOTCAS=[/var/hyperledger/orderer/kafka/tls/ca.crt]
+{% else %} 
+      - FABRIC_LOGGING_SPEC=DEBUG
+      - ORDERER_KAFKA_TLS_PRIVATEKEY_FILE=/var/hyperledger/orderer/kafka/tls/client.key
+      - ORDERER_KAFKA_TLS_CERTIFICATE_FILE=/var/hyperledger/orderer/kafka/tls/client.crt
+      - ORDERER_KAFKA_TLS_ROOTCAS_FILE=/var/hyperledger/orderer/kafka/tls/ca.crt
+{% endif %}
+      - ORDERER_KAFKA_RETRY_NETWORKTIMEOUTS_DIALTIMEOUT=30s
+      - ORDERER_KAFKA_RETRY_NETWORKTIMEOUTS_READTIMEOUT=30s
+      - ORDERER_KAFKA_RETRY_NETWORKTIMEOUTS_WRITETIMEOUT=30s
+{% endif %}
+      - ORDERER_OPERATIONS_LISTENADDRESS=0.0.0.0:8443    
+      - ORDERER_METRICS_PROVIDER=prometheus  
+    working_dir: /opt/gopath/src/github.com/hyperledger/fabric
+    command: orderer
+    volumes:
+    - ./genesis.block:/var/hyperledger/orderer/orderer.genesis.block
+    - {{ worker_home }}/crypto-config/ordererOrganizations/{{ orderer_domain }}/orderers/{{ inventory_hostname_short }}.{{ orderer_domain }}/msp:/var/hyperledger/orderer/msp
+    - {{ worker_home }}/crypto-config/ordererOrganizations/{{ orderer_domain }}/orderers/{{ inventory_hostname_short }}.{{ orderer_domain }}/tls:/var/hyperledger/orderer/tls
+{% if fabric_orderer_type == "kafka" %}
+    - ./kafkaTLSclient:/var/hyperledger/orderer/kafka/tls
+{% endif %}
+    - /etc/localtime:/etc/localtime
+    - {{ fabric_data }}:/var/hyperledger/production
+    logging:
+      driver: "json-file"
+      options: 
+        max-size: "50m"
+        max-file: "10"
+    ports:
+{% if ord_name == fabric_genesis_orgs.ords[0] %}
+    - 700{{ inventory_hostname_short | regex_search('\\d+') | int + 1 }}:7050
+{% else %}
+    - 7050:7050
+{% endif %}
+{% if fabric_minor_ver | int >= 4 %}
+    - 8443:8443
+{% endif %}
+    extra_hosts:
+{% if fabric_orderer_type == "kafka" %}
+{% if groups['kafka'] | length == 1 %}
+      broker.{{ kafka_domain |default('kafka') }}: {{ hostvars['kafka1']['ansible_ssh_host'] }}
+{% else %}   
+{% if slb is none %}
+{% for i in groups.kafka %}
+      broker{{ hostvars[i].inventory_hostname | regex_search('\\d+') }}.{{ kafka_domain |default('kafka') }}: {{ hostvars[i].ansible_ssh_host }}
+{% endfor %}
+{% else %}}
+{% for i in groups.kafka %}
+      broker{{ hostvars[i].inventory_hostname | regex_search('\\d+') }}.{{ kafka_domain |default('kafka') }}: {{ slb }}
+{% endfor %}{% endif %}
+{% endif %}
+{% else %}
+{% for each_o in groups[fabric_genesis_orgs.ords[0]~'_orderer'] %}
+      {{ hostvars[each_o].inventory_hostname_short }}.{{ hostvars[each_o].orderer_domain }}: {{ hostvars[each_o].ansible_ssh_host }}
+{% endfor %}
+{% endif %}

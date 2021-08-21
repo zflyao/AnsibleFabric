@@ -1,0 +1,81 @@
+---
+
+- name: "加入 channel{{ ccname | default ('fft') }}"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 1 0 channel{{ ccname | default ('fft') }}
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ JoinChannel.stderr_lines }}"
+
+- name: "安装 {{ ccname | default ('fft') }} chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 2 0 {{ ccname | default ('fft') }}.out
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc
+  ignore_errors: yes
+
+- debug:
+    msg: "{{ InstallCc.stderr_lines }}"
+
+- name: "peer1加入 channel{{ ccname | default ('fft') }}"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 1 1 channel{{ ccname | default ('fft') }}
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel_peer1
+  ignore_errors: yes
+  when: find_crypto.matched == 2
+
+- debug:
+    msg: "{{ JoinChannel_peer1.stderr_lines }}"
+  when: find_crypto.matched == 2
+
+- name: "peer1安装 {{ ccname | default ('fft') }} chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 2 1 {{ ccname | default ('fft') }}.out
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc_peer1
+  ignore_errors: yes
+  when: find_crypto.matched == 2
+
+- debug:
+    msg: "{{ InstallCc_peer1.stderr_lines }}"
+  when: find_crypto.matched == 2
+
+- name: "peer2加入 channel{{ ccname | default ('fft') }}"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 1 2 channel{{ ccname | default ('fft') }}
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: JoinChannel_peer2
+  ignore_errors: yes
+  when: find_crypto.matched == 3
+
+- debug:
+    msg: "{{ JoinChannel_peer2.stderr_lines }}"
+  when: find_crypto.matched == 3
+
+- name: "peer2安装 {{ ccname | default ('fft') }} chaincode"
+  become: yes
+  become_user: "{{ worker_user }}"
+  shell: bash worktools_join_org{{ org_id }}.sh 2 2 {{ ccname | default ('fft') }}.out
+  args:
+    chdir: "{{ fabric_home }}/tools"
+  register: InstallCc_peer2
+  ignore_errors: yes
+  when: find_crypto.matched == 3
+
+- debug:
+    msg: "{{ InstallCc_peer2.stderr_lines }}"
+  when: find_crypto.matched == 3

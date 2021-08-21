@@ -1,0 +1,6 @@
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+mongodb.addresses={{ mongodb_url[10:] }}
+mongodb.database={{ instance_vars.mongodb_database }}
+hoperun.security.authentication.jwt.tokenValidityInSeconds=63072000000
+server.port={{ instance_vars.listen_port }}

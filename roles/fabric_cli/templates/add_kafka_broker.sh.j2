@@ -1,0 +1,41 @@
+#!/bin/bash
+
+CHANNEL_NAME=testchainid
+NEW_KAFKA_BROKER={{ new_broker }}
+
+dockersh="docker exec cli-{{ inventory_hostname }} sh -c"
+
+function fetch_config_json() {
+  $dockersh "peer channel fetch config ${CHANNEL_NAME}_config_block.pb -o \$ORDERER_ADDRESS -c $CHANNEL_NAME --tls --cafile \$ORDERER_CA" || exit 1
+  $dockersh "configtxlator proto_decode --input ${CHANNEL_NAME}_config_block.pb --type common.Block --output ${CHANNEL_NAME}_config_block.json"
+  $dockersh "jq .data.data[0].payload.data.config ${CHANNEL_NAME}_config_block.json > ${CHANNEL_NAME}_config.json"
+}
+
+function modify_config() {
+  $dockersh "jq '.channel_group.groups.Orderer.values.KafkaBrokers.value.brokers += [\"{{ new_broker }}\"]' ${CHANNEL_NAME}_config.json > ${CHANNEL_NAME}_modified_config.json"
+}
+
+function encode_config() {
+  $dockersh "configtxlator proto_encode --input ${CHANNEL_NAME}_config.json --type common.Config --output ${CHANNEL_NAME}_config.pb"
+  $dockersh "configtxlator proto_encode --input ${CHANNEL_NAME}_modified_config.json --type common.Config --output ${CHANNEL_NAME}_modified_config.pb"
+  $dockersh "configtxlator compute_update --channel_id $CHANNEL_NAME --original ${CHANNEL_NAME}_config.pb --updated ${CHANNEL_NAME}_modified_config.pb --output ${CHANNEL_NAME}_config_update.pb" 2>&1 | tee temp.log
+  if grep 'no differences detected between original and updated config' temp.log; then
+    return 0
+  fi
+  $dockersh "configtxlator proto_decode --input ${CHANNEL_NAME}_config_update.pb --type common.ConfigUpdate --output ${CHANNEL_NAME}_config_update.json"
+  $dockersh "echo '{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"$CHANNEL_NAME\", \"type\":2}},\"data\":{\"config_update\":'\$(cat ${CHANNEL_NAME}_config_update.json)'}}}' | jq . > ${CHANNEL_NAME}_config_update_in_envelope.json"
+  $dockersh "configtxlator proto_encode --input ${CHANNEL_NAME}_config_update_in_envelope.json --type common.Envelope --output artifacts/${CHANNEL_NAME}_config_update_in_envelope.pb"
+}
+
+function update_config() {
+  $dockersh "peer channel update -f artifacts/${CHANNEL_NAME}_config_update_in_envelope.pb -c $CHANNEL_NAME -o \$ORDERER_ADDRESS --tls --cafile \$ORDERER_CA"
+}
+
+
+######
+######
+
+fetch_config_json
+modify_config
+encode_config
+update_config

@@ -1,0 +1,15 @@
+---
+
+- name: 本地创建目录
+  local_action:
+    module: file
+    path: "{{ env_src }}/nmon/"
+    state: directory
+
+- name: 获取运行结果
+  synchronize:
+    mode: pull
+    src: /tmp/nmon_output
+    dest: "{{ env_src }}/nmon/{{ ansible_ssh_host }}/"
+    private_key: summary_files/common/sshkey/id_rsa_1024_root
+  

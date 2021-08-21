@@ -1,0 +1,106 @@
+- name: 检查 rabbitmq 容器的id
+  shell: docker ps -aq -f name=mq
+  register: rabbitmq_id
+  tags:
+    - rebuild
+- debug:
+    msg: "{{rabbitmq_id.stdout_lines}}"
+  tags:
+    - rebuild
+
+- pause:
+    seconds: 10
+
+- name: stop_app salver rabbitmq
+  # become: yes
+  # become_user: "{{ worker_user }}"
+  shell: docker exec -i {{ rabbitmq_id.stdout }} rabbitmqctl stop_app
+  register: stop_app
+  when: inventory_hostname != rabbitmq0
+  tags:
+    - rebuild
+- debug:
+    msg: "{{stop_app.stdout_lines}}"
+  when: inventory_hostname != rabbitmq0
+  tags:
+    - rebuild
+
+- name: wait for
+  wait_for:
+    timeout: 5
+
+- name: salver join cluster
+  # become: yes
+  # become_user: "{{ worker_user }}"
+  shell: docker exec -i {{ rabbitmq_id.stdout }} rabbitmqctl join_cluster rabbit@{{ rabbitmq0 }}
+  register: join_cluster
+  when: inventory_hostname != rabbitmq0
+  tags:
+    - rebuild
+- debug:
+    msg: "{{join_cluster.stdout_lines}}"
+  when: inventory_hostname != rabbitmq0
+  tags:
+    - rebuild
+
+- name: wait for
+  wait_for:
+    timeout: 5
+
+- name: start_app salver rabbitmq
+  # become: yes
+  # become_user: "{{ worker_user }}"
+  shell: docker exec -i {{ rabbitmq_id.stdout }} rabbitmqctl start_app
+  register: start_app
+  when: inventory_hostname != rabbitmq0
+  tags:
+    - rebuild
+- debug:
+    msg: "{{start_app.stdout_lines}}"
+  when: inventory_hostname != rabbitmq0
+  tags:
+    - rebuild
+
+- name: 等待 port 监听
+  wait_for:
+    port: 5672
+    delay: 5
+  tags:
+    - rebuild
+
+- name: 检查 rabbitmq 集群状态
+  shell: docker exec -i {{ rabbitmq_id.stdout }} rabbitmqctl cluster_status
+  register: cluster_status
+  tags:
+    - rebuild
+
+- debug:
+    msg: "{{cluster_status.stdout_lines}}"
+  tags:
+    - rebuild
+
+- name: 上传 setHA.sh
+  template:
+    src: setHA.sh
+    dest: "{{ rabbitmq_home }}"
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    mode: 0755
+    backup: yes
+  when: rabbitmq0 == inventory_hostname
+  tags:
+    - rebuild
+
+- name: set_policy ha-all
+  # become: yes
+  # become_user: "{{ worker_user }}"
+  shell: sh {{ rabbitmq_home }}/setHA.sh
+  register: ha
+  when: inventory_hostname == rabbitmq0
+  tags:
+    - rebuild
+- debug:
+    msg: "{{ha.stdout_lines}}"
+  when: inventory_hostname == rabbitmq0
+  tags:
+    - rebuild

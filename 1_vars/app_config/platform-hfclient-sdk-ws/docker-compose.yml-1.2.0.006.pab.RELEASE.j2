@@ -1,0 +1,36 @@
+version: '2'
+
+services:
+  runchainapi_{{ instance_name }}:
+    container_name: runchainapi_{{ instance_name }}
+    image: {{ harbor_domain }}/{{ docker_image_project }}/{{ docker_image_name }}:{{ version }}
+    restart: always
+    environment:
+      - LANG=en_US.UTF-8
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./current.info:/opt/ApiServer/current.info
+      - ./config:/opt/ApiServer/config
+      - ./logs:/opt/ApiServer/logs
+      - ./scripts:/opt/ApiServer/scripts
+      - {{ instance_dir }}/crypto-config:/home/blockchain/crypto-config
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+      - {{ instance_vars.listen_port }}:{{ instance_vars.listen_port }}
+    extra_hosts:
+# MQ
+{% for each_mq in groups[org_name~'_rabbitmq'] %}
+      {{ each_mq | regex_search('(mq\\d+)') }}.{{ org_domain }}: {{ hostvars[each_mq]['ansible_ssh_host'] }}
+{% endfor %}
+# Peer
+      peer{{ server_id }}.{{ peer_domain }}: {{ hostvars['peer'~server_id~'.'~org_name]['ansible_ssh_host'] }}
+# Orderer
+{% if own_orderer %}
+      orderer{{ server_id }}.{{ orderer_domain }}: {{ hostvars['orderer'~server_id~'.'~ord_name]['ansible_ssh_host'] }}
+{% else %}
+      orderer{{ server_id }}.{{ orderer_domain }}: {{ hostvars['orderer'~server_id~'.'~ord_name]['slb'][conn_mode] | default("hostvars['orderer'~server_id~'.'~ord_name]['ansible_ssh_host']",true) }}
+{% endif %}

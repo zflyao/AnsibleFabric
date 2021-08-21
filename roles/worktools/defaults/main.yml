@@ -1,0 +1,31 @@
+---
+
+worker_group: blockchain
+worker_user: blockchain
+worker_home: "/home/{{ worker_user }}"
+fabric_home: "{{ worker_home }}/{{ inventory_hostname }}"
+ccname_home: "{{ fabric_home }}/{{ ccname | default ('fft') }}"
+
+fabric_domain: finblockchain.cn
+genesis_domain: finblockchain.cn
+
+kafka_count: "{{ groups['kafka'] | length }}"
+orderer_count: "{{ groups['org1_orderer'] | length }}"
+peer_count: "{{ groups['org1_peer'] | length }}"
+org_id: "{{ inventory_hostname | regex_search('\\d+$') }}"
+ord_id: "{{org_id}}"
+
+fabric_deploy_ver: 1.0
+# join channel
+ordmsp_domain: "{{ fabric_domain }}"
+ordmsp_port: 7001
+
+#cryptogen
+env_src: "{{inventory_file | basename}}"
+peer_gname: "org{{ org_id }}_peer"
+orderer_gname: "org{{ ord_id }}_orderer"
+api_gname: "org{{ org_id }}_api"
+ownpeer: "{{ groups[peer_gname] }}"
+ownorderer: "{{ groups[orderer_gname] }}"
+ownapi: "{{ groups[api_gname] }}"
+ordorg: true

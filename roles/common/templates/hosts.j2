@@ -1,0 +1,66 @@
+127.0.0.1   localhost localhost.localdomain localhost4 localhost4.localdomain4
+::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
+
+# hostname loopback address
+127.0.1.1 {{ ansible_hostname }}
+# harbor repo
+{{ harbor }} harbor.ops.finrunchain.com
+{% if 'org1_peer' in group_names %}
+# 区块链底层
+{% for orderers in groups.org1_orderer %}
+{{ hostvars[orderers].ansible_ssh_host }} {{ hostvars[orderers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% for peers in groups.org1_peer %}
+{{ hostvars[peers].ansible_ssh_host }} {{ hostvars[peers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% endif %}
+{% if 'org11_peer' in group_names %}
+# 区块链底层
+{% for orderers in groups.org11_orderer %}
+{{ hostvars[orderers].ansible_ssh_host }} {{ hostvars[orderers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% for peers in groups.org11_peer %}
+{{ hostvars[peers].ansible_ssh_host }} {{ hostvars[peers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% endif %}
+{% if 'org12_peer' in group_names %}
+# 区块链底层
+{% for orderers in groups.org12_orderer %}
+{{ hostvars[orderers].ansible_ssh_host }} {{ hostvars[orderers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% for peers in groups.org12_peer %}
+{{ hostvars[peers].ansible_ssh_host }} {{ hostvars[peers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% endif %}
+{% if 'org13_peer' in group_names %}
+# 区块链底层
+{% for orderers in groups.org13_orderer %}
+{{ hostvars[orderers].ansible_ssh_host }} {{ hostvars[orderers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% for peers in groups.org13_peer %}
+{{ hostvars[peers].ansible_ssh_host }} {{ hostvars[peers].inventory_hostname }}.{{ fabric_domain }}
+{% endfor %}
+{% endif %}
+{% if 'jdk' in group_names and slb is defined %}
+# 应用
+{{ slb }}  api.{{ fabric_domain }} hbcccloud.{{ app_domain }}
+{{ db1 }} db1.{{ app_domain }}
+{{ db2 }} db2.{{ app_domain }}
+{{ mongodb1 }} mongo1.{{ app_domain }}
+{{ mongodb2 }} mongo2.{{ app_domain }}
+{{ mongodb3 }} mongo3.{{ app_domain }}
+{% endif %}
+{% if 'java' in group_names and slb is not defined %}
+# 应用
+{{ hostvars['api0.org1'].ansible_ssh_host }} api.{{ fabric_domain }}
+{{ hostvars[java1].ansible_ssh_host }} hbcccloud.{{ app_domain }}
+{{ db1 }} db1.{{ app_domain }}"
+{{ db2 }} db2.{{ app_domain }}"
+{{ mongodb1 }} mongo1.{{ app_domain }}
+{% endif %}
+{% if 'org1_hbcccloud' in group_names %}
+# 应用
+{{ mongodb1 }} mongo1.{{ app_domain }}
+{{ mongodb2 }} mongo2.{{ app_domain }}
+{{ mongodb3 }} mongo3.{{ app_domain }}
+{% endif %}

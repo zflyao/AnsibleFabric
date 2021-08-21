@@ -1,0 +1,45 @@
+- name: Create orderer tlsca directory
+  file:
+    path: "{{ worker_home }}/crypto-config/ordererOrganizations/{{ orderer_domain }}/tlsca"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+
+- name: Sync All Orderer & Peer MSP directories to genesis server
+  synchronize:
+    src: "{{ env_src }}/crypto-config/{{ item }}Organizations"
+    dest: "{{ worker_home }}/crypto-config/"
+    private_key: "{{ ansible_ssh_private_key_file }}"
+    delete: yes
+  loop: ['peer', 'orderer']
+  when: genesis is defined and genesis
+
+- name: Create peer organizations directory
+  file:
+    path: "{{ worker_home }}/crypto-config/peerOrganizations/"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+  when: (genesis is undefined) or (not genesis)
+
+- name: Upload Peer's MSP
+  synchronize: 
+    src: "{{ env_src }}/crypto-config/peerOrganizations/{{ peer_domain }}"
+    dest: "{{ worker_home }}/crypto-config/peerOrganizations/"
+    private_key: "{{ ansible_ssh_private_key_file }}"
+    delete: yes
+  when: (genesis is undefined) or (not genesis)
+
+- name: Upload Orderer's TLS CA
+  copy:
+    src: "{{ env_src }}/crypto-config/ordererOrganizations/{{ orderer_domain }}/tlsca/tlsca.{{ orderer_domain }}-cert.pem"
+    dest: "{{ worker_home }}/crypto-config/ordererOrganizations/{{ orderer_domain }}/tlsca/"
+  when: (genesis is undefined) or (not genesis)
+
+- name: "chown crypto-config to {{ worker_user }}"
+  file:
+    path: "{{ worker_home }}/crypto-config"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes  

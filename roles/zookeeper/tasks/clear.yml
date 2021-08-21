@@ -1,0 +1,5 @@
+---
+- name: 清除 zk 数据
+  file:
+    path: "{{ zk_home }}/mount/"
+    state: absent

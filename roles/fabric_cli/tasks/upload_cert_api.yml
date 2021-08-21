@@ -1,0 +1,31 @@
+- name: Create MSP directory for API
+  file:
+    # path: "{{ worker_home }}/{{ instance_name }}/crypto-config/{{ item }}Organizations/"
+    path: "{{ worker_home }}/crypto-config/{{ item }}Organizations/"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"    
+  loop: ['peer', 'orderer']
+
+- name: Upload Orderer MSP directory for API
+  synchronize:
+    src: "{{ env_src }}/crypto-config/ordererOrganizations/{{ orderer_domain }}"
+    # dest: "{{ worker_home }}/{{ instance_name }}/crypto-config/ordererOrganizations/"
+    dest: "{{ worker_home }}/crypto-config/ordererOrganizations/"
+    private_key: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+    delete: yes
+
+- name: Upload Peer MSP directory for API
+  synchronize:
+    src: "{{ env_src }}/crypto-config/peerOrganizations/{{ peer_domain }}"
+    dest: "{{ worker_home }}/crypto-config/peerOrganizations/"
+    private_key: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
+    delete: yes
+
+- name: "chown crypto-config to {{ worker_user }}"
+  file:
+    path: "{{ worker_home }}/crypto-config"
+    state: directory
+    group: "{{ worker_group }}"
+    owner: "{{ worker_user }}"
+    recurse: yes

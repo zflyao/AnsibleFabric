@@ -1,0 +1,11 @@
+# Use the -e input variable, eg："inventory=org11_hbcc"
+---
+
+- name: supervisor
+  hosts: "{{ inventory }}"
+  gather_facts: false
+  tasks:
+  - import_role:
+      name: supervisor
+    vars:
+      operation: install

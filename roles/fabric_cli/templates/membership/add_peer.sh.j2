@@ -1,0 +1,76 @@
+#!/bin/bash
+
+CHANNEL=$1
+WORK_DIR=$(cd $(dirname $0); pwd)
+ADD_ORG_NAME={{ hostvars['peer0.'~addorg]['org_mspname'] }}
+ADD_ORG_DOMAIN={{ hostvars['peer0.'~addorg]['peer_domain'] }}
+ANCHOR_PEER_DOMAIN=peer0.$ADD_ORG_DOMAIN
+ANCHOR_PEER_PORT=7051
+
+# 从通道 $CHANNEL 中抓取最新的配置，解码为 config_${CHANNEL}.json 文件
+function fetchConfig() {
+  peer channel fetch config config-${CHANNEL}.pb -c $CHANNEL -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA
+  configtxlator proto_decode --input config-${CHANNEL}.pb --type common.Block | jq -e \
+    '.data.data[0].payload.data.config' > config_${CHANNEL}.json
+}
+
+# 检查 $ADD_ORG_NAME 是否已加入通道
+function checkPeerAdded () {
+  fetchConfig
+  cat config_${CHANNEL}.json | jq -e \
+    ".channel_group.groups.Application.groups.${ADD_ORG_NAME}"
+  if [ $? -eq 0 ]; then
+    echo "组织 $ADD_ORG_NAME 已在 $CHANNEL 中，无需新增"
+    return 0
+  else
+    echo "组织 $ADD_ORG_NAME 不在 $CHANNEL 中"
+    return 1
+  fi
+}
+
+function updateConfig () {
+  # 使用 configtxlator 比对 config_${CHANNEL}.pb 和 modified_config_${CHANNEL}.pb 并生成 config_update_${CHANNEL}.pb 文件
+  configtxlator proto_encode --input config_${CHANNEL}.json --type common.Config --output config_${CHANNEL}.pb
+  configtxlator proto_encode --input modified_config_${CHANNEL}.json --type common.Config --output modified_config_${CHANNEL}.pb
+  configtxlator compute_update --channel_id $CHANNEL --original config_${CHANNEL}.pb --updated modified_config_${CHANNEL}.pb --output config_update_${CHANNEL}.pb
+  # 将 config_update_${CHANNEL}.pb 封装，加上外部配置后生成 config_update_${CHANNEL}_in_envelope.pb
+  configtxlator proto_decode --input config_update_${CHANNEL}.pb --type common.ConfigUpdate | jq . > config_update_${CHANNEL}.json
+  echo "{\"payload\":{\"header\":{\"channel_header\":{\"channel_id\":\"$CHANNEL\", \"type\":2}},\"data\":{\"config_update\":$(cat config_update_${CHANNEL}.json)}}}" | jq . > config_update_${CHANNEL}_in_envelope.json
+  configtxlator proto_encode --input config_update_${CHANNEL}_in_envelope.json --type common.Envelope --output config_update_${CHANNEL}_in_envelope.pb
+  # 提交配置更新
+  peer channel update -f config_update_${CHANNEL}_in_envelope.pb -c $CHANNEL -o $ORDERER_ADDRESS --tls --cafile $ORDERER_CA
+}
+
+function addOrgAndAnchor() {
+  # 检查通道中是否已加入该组织，如已加入则直接返回0
+  checkPeerAdded && return 0
+  # 根据 configtx.yaml 输出待添加组织的 JSON 配置
+  configtxgen -configPath . -printOrg ${ADD_ORG_NAME} > ${ADD_ORG_NAME}.json
+  # 将 config_${CHANNEL}.json 与 ${ADD_ORG_NAME}.json 合并为 modified_config_${CHANNEL}.json
+  jq -s ".[0] * {\"channel_group\":{\"groups\":{\"Application\":{\"groups\":{\"$ADD_ORG_NAME\":.[1]}}}}}" \
+    config_${CHANNEL}.json ${ADD_ORG_NAME}.json | jq -e \
+    ".channel_group.groups.Application.groups.${ADD_ORG_NAME}.values += {
+      \"AnchorPeers\": {
+        \"mod_policy\": \"Admins\",
+        \"value\": {
+          \"anchor_peers\": [
+            {\"host\": \"$ANCHOR_PEER_DOMAIN\",\"port\": $ANCHOR_PEER_PORT}
+          ]
+        },
+        \"version\": \"0\"
+      }
+    }" \
+    > modified_config_${CHANNEL}.json
+  # 更新配置
+  updateConfig
+  if [ $? -eq 0 ]; then
+    echo "向通道 $CHANNEL 添加组织 ${ADD_ORG_NAME} 及锚节点成功"
+  else
+    echo "向通道 $CHANNEL 添加组织 ${ADD_ORG_NAME} 及锚节点失败"
+    exit 1
+  fi
+}
+
+
+cd $WORK_DIR
+addOrgAndAnchor

@@ -1,0 +1,34 @@
+version: '2'
+
+services:
+  apiserver:
+    container_name: apiserver_{{ ccname | default ('fft') }}
+    environment:
+      # 阿里云所需参数
+      - GODEBUG=netdns=go
+      #--------------------
+    image: {{ harbor }}/{{ harbor_project }}/asset/apiserver:latest
+    restart: always
+    volumes:
+    - ./client_sdk.yaml:/opt/apiserver/client_sdk.yaml
+    - {{ fabric_home }}/crypto-config:/opt/apiserver/crypto-config
+    - /etc/localtime:/etc/localtime
+    - ./currentblock.info:/opt/apiserver/currentblock.info
+    working_dir: /opt/apiserver
+    command: ./apiserver
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "10"
+    ports:
+     - {{ channel_add[ccname].port }}:{{ channel_add[ccname].port }}
+    extra_hosts:
+{% for mq_hosts in groups[rabbitmq_gname] %}
+      {{ mq_hosts }}: {{ hostvars[mq_hosts].ansible_ssh_host }}
+{% endfor %}
+{% for peer_hosts in groups[peer_gname] %}
+      {{ peer_hosts }}.{{ fabric_domain }}: {{ hostvars[peer_hosts].ansible_ssh_host }}
+{% endfor %}
+      orderer0.ord1.{{ myorderer_domain }}: {{ hostvars['orderer0.ord1'].ansible_ssh_host }}
+      orderer1.ord1.{{ myorderer_domain }}: {{ hostvars['orderer1.ord1'].ansible_ssh_host }}

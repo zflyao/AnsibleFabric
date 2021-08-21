@@ -1,0 +1,58 @@
+#!/bin/bash
+
+APISERVER_IP=127.0.0.1
+APISERVER_PORT={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+CCNAME={{ instance_vars.chaincode }}
+CCDIR=/usr/local/bin/
+
+BASE_DIR={{ worker_home }}/keylist-${CCNAME}
+SCRIPT_DIR=$(cd $(dirname $0); pwd)
+LOCAL_FILE=key_list.yaml
+LOCAL_HEADER_FILE=key_list_header.yaml
+TEMP_FILE=key_list.yaml.temp
+OUTPUT_FILE=key_list_output.yaml
+
+fileEdit() {
+  mkdir -p $BASE_DIR
+  cp -rf $SCRIPT_DIR/$LOCAL_HEADER_FILE $BASE_DIR/$TEMP_FILE
+  FILE_LIST=$(ls {{ worker_home }}/${CCNAME}*/{{ app_name }}/script/$LOCAL_FILE)
+  for each_file in ${FILE_LIST[@]}; do
+    sed -n '5,$p' $each_file >> $BASE_DIR/$TEMP_FILE
+  done
+  cd $BASE_DIR/
+  mv -f $TEMP_FILE $OUTPUT_FILE
+}
+
+copyToCC() {
+  cc_contain_name=$(docker ps |grep dev|awk "/${CCNAME}/{print $ NF}"|sort -nr|head -1)
+  if [ -z "$cc_contain_name" ];then
+    echo "Chaincode's docker container doesn't exist!"
+    exit 12
+  fi
+
+  cd ${BASE_DIR}
+  if [ ! -f ${OUTPUT_FILE} ];then
+    echo "${OUTPUT_FILE} doesn't exist!"
+    exit 11
+  else
+    docker cp ${OUTPUT_FILE} ${cc_contain_name}:${CCDIR}/${LOCAL_FILE}
+  fi
+}
+
+
+
+keylistUpdate() {
+  cd ${SCRIPT_DIR}
+  curl -Ssi -X POST http://${APISERVER_IP}:${APISERVER_PORT}/assetTradingPlatform/UpdateKeyCfg -H 'Content-type: application/json' -H 'Accept: application/json' --data-binary "@keysync.txt"|grep -q "HTTP/1.1 200 OK"
+  res=$?
+  if [ $res -eq 0 ];then
+    echo "updateSuccess"
+  else
+    echo "curlError"
+    exit 13
+  fi
+}
+
+fileEdit
+copyToCC
+keylistUpdate

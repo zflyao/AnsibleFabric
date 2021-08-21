@@ -1,0 +1,8 @@
+- name: Templating script
+  template:
+    src: genKafkaTLS.sh.j2
+    dest: /tmp/genKafkaTLS.sh
+    mode: 0755
+
+- name: 运行生成 Kafka 证书的脚本
+  command: /tmp/genKafkaTLS.sh

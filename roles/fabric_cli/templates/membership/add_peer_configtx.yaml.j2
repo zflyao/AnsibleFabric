@@ -1,0 +1,8 @@
+Organizations:
+    - &PeerOrg
+        Name: {{ org_mspname }}
+        ID: {{ org_mspid }}
+        MSPDir: ../crypto-config/peerOrganizations/{{ peer_domain }}/msp
+        AnchorPeers:
+            - Host: peer0.{{ peer_domain }}
+              Port: 7051

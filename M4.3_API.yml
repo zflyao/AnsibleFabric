@@ -1,0 +1,28 @@
+# 需提供主机 inventory， automatically fetch channel from {{ join_channels }}
+# ansible-playbook -e inventory=org1_api M6_API.yml
+---
+- name: 上传 API 需要的 MSP
+  hosts: "{{ inventory }}"
+  gather_facts: false
+  serial: 1
+  vars_files:
+    - 1_vars/common.yml
+    - 1_vars/chaincode.yml
+  vars:
+    instance_dir: "{{ worker_home }}/{{ inventory_hostname | regex_replace('(.*\\d+).(.*\\d+)$','\\1_\\2') }}"
+    work_dir: "{{ instance_dir }}/{{ instance_name }}"
+    app_name: platform-hfclient-sdk-ws  
+  tasks: 
+  - import_role:
+      name: fabric_cli
+      tasks_from: upload_cert_api
+
+  - include_role:
+      name: app_deploy
+      tasks_from: api_deploy.yml
+    vars:
+      channel: "{{ channel_item }}"
+      api_vars: "{{ fabric_channels[channel].api }}"
+    loop: "{{ join_channels }}"
+    loop_control:
+      loop_var: channel_item

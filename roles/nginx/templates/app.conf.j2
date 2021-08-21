@@ -1,0 +1,35 @@
+{% if ngx_upstreams %}
+{% for u in ngx_upstreams %}
+upstream {{ u.app_name }}_{{ instance_name }} {
+{% if u.lb_mode is defined and u.lb_mode %}
+    {{ u.lb_mode }};
+{% endif %}
+{% for s in groups[instances[instance_name][u.app_name]['on_group']] %}
+    server {{ hostvars[s]['ansible_ssh_host'] }}:{{ instances[instance_name][u.app_name]['listen_port'] }} max_fails={{ u.max_fails }} fail_timeout={{ u.fail_timeout }};
+{% endfor %}
+}
+{% endfor %}
+{% endif %}
+
+server {
+    listen {{ listen_port }};
+    server_name {{ instances[instance_name][app_name]['server_name'] }};
+
+    access_log logs/{{ ngx_log.name }}_{{ instance_name }}.access.log {{ ngx_log.format }};
+    error_log  logs/{{ ngx_log.name }}_{{ instance_name }}.error.log;
+{% if ngx_root %}
+    root {{ ngx_root }};
+{% endif %}
+
+{% for l in ngx_locations %}
+    location {{ l.modifier }} {{ l.uri }} {
+        {{ l.config | indent(6) }}
+{% if l.proxy_pass is defined and l.proxy_pass %}
+        proxy_pass {{ l.proxy_pass }}_{{ instance_name }};
+{% endif %}
+{% if l.index is defined and l.index %}
+        index {{ l.index }};
+{% endif %}
+    }
+{% endfor %}
+}

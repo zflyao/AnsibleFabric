@@ -1,0 +1,17 @@
+# Copyright IBM Corp. All Rights Reserved.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
+OrdererOrgs:
+  - Name: dyckord
+    Domain: ord.jlhyfzf.xmeport.cn
+    Template:
+      Count: 2
+PeerOrgs:
+  - Name: dyck
+    Domain: org.jlhyfzf.xmeport.cn
+    Template:
+      Count: 2
+    Users:
+      Count: 1

@@ -1,0 +1,44 @@
+logging.config=${root.path}/config/logback-spring.xml
+logging.file=${root.path}/logs/operation.log
+server.port={{ instance_vars.listen_port }}
+spring.application.name=jeecg-boot-module-system
+spring.application.version=2.0.0
+platform.component.client.platformRuntimeServer=http://{{ instances[instance_name]['platform-service-runtime-ws']['domain'] }}:{{ instances[instance_name]['platform-service-runtime-ws']['listen_port'] }}
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+#spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}
+#spring.datasource.username={{ pg_user }}
+#spring.datasource.password={{ pg_pass }}
+hoperun.plugins.amqp.fanoutQueueName={{ instance_vars.rabbitmq_queue }}
+hoperun.plugins.amqp.fanoutExchangeName={{ instance_vars.rabbitmq_exchange }}
+hoperun.plugins.amqp.isStartEventReceiver={% if ansible_hostname | regex_search('\d') | int == 0 %}true{% else %}false{% endif %}
+
+hoperun.blockchain.configbean=true
+hoperun.blockchain.isEncrypt=true
+spring.rabbitmq.addresses={{ rabbitmq_address }}
+spring.rabbitmq.username={{ rabbitmq_user }}
+spring.rabbitmq.password={{ rabbitmq_pass }}
+hoperun.platform.base.apiserver.host=http://{{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}:{{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}/assetTradingPlatform
+runchain.application.keyListServiceUrl=http://{{ instances[instance_name]['keylist-ws']['domain'] }}:{{ instances[instance_name]['keylist-ws']['listen_port'] }}/api/keylist
+jsb.component.client.inUse=false
+
+# 运营平台地址
+operate.opLoginUrl=http://localhost:5002/jeecg-boot/api/authenticate
+#友信地址
+yonyou.login.api.voucher=http://10.21.102.177:5002
+#保理地址
+yonyou.login.api.df=http://10.21.102.154:5002
+
+hoperun.platform.base.callBackQueryInterval=3000
+hoperun.platform.base.enabled=true
+#server.tomcat.basedir={{ instance_dir }}/df_tmp
+
+#应用地址
+runchain.application.applicationUrl={{ instance_vars.public_addr }}
+#cfca配置
+runchain.cfca.sadk.cfcaUrl={{ thirdparty['shuronglianCfcaSadk'][env_type]['url'] }}
+runchain.cfca.sadk.inUse=false
+
+runchain.registration.priPath=${root.path}/config/051@000006@N91120118MA06AT5407@1.pri
+runchain.registration.pubPath=${root.path}/config/051@000006@N91120118MA06AT5407@1.cer
+

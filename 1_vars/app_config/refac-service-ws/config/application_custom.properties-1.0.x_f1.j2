@@ -1,0 +1,45 @@
+spring.application.name=fac
+spring.application.version=1.2.0
+##database config
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}?targetServerType=master
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+
+hbcc.core.properties.businessLine=BL
+hbcc.core.properties.subBusinessLine=RFAC
+
+##mongodb
+hbcc.core.properties.mongodb.addresses={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+hbcc.core.properties.mongodb.database={{ instance_vars.mongodb_database }}
+##cache address
+hbcc.cache.mongo.uri={{ mongodb_url }}/{{ instance_vars.mongodb_cache_database }}
+hbcc.cache.mongo.database={{ instance_vars.mongodb_cache_database }}
+##blockchain config
+hbcc.core.properties.blockChain.connection.pool.host={{ slb.inner }}
+hbcc.core.properties.blockChain.connection.pool.port={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+hbcc.core.properties.blockChain.connection.pool.forceRefresh=false
+hbcc.core.properties.blockChain.connection.channel={{ instance_vars.channel }}
+hbcc.core.properties.blockChain.connection.enableSSL=false
+hbcc.core.properties.blockChain.connection.supportedProtocols=TLSv1
+hbcc.core.properties.blockChain.connection.enableConnectionReuse=false
+
+#
+hbcc.core.properties.myChain.name=Runtf/{{ instance_vars.channel }}
+hbcc.core.properties.myChain.ip={{ slb.inner }}
+hbcc.core.properties.myChain.port={{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}
+hbcc.core.properties.cloudIntranetAddr=http://{{ slb.inner }}:{{ instances[instance_name]['hbcc-cloud-service-ws']['listen_port'] }}
+hbcc.ugm.rolePath=/home/blockchain/refactor/refac-service-ws/config/init_default_roles.json
+
+#df.webservice.url=http://192.168.76.45:9092
+application.dfApiUri.username=baoli001
+application.dfApiUri.password=123456aA
+#保理连接
+application.dfApiUri.apiUri=http://{{ slb.inner }}:{{ instance_vars.df_port }}
+
+application.hummerApiUri.username=rfcoreorg010
+application.hummerApiUri.password=123456aA
+#权证连接
+application.hummerApiUri.apiUri=http://{{ slb.inner }}:{{ instance_vars.voucher_port }}
+
+hummer.orgId=4smi1ao10lvfh4esrqsps6anv16kq5791566783039077_n008jcqkc6ve4rttp8rf6d1iklq5qeua1567239663436
+server.port={{ instance_vars.listen_port }}

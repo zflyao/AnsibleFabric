@@ -1,0 +1,70 @@
+function confirmEnding(str, target) {
+
+        if(str.endsWith(target)){
+            return true;
+        }
+          return false;
+
+}
+
+//创建索引
+
+function makeIndexes(){
+
+       var colls = db.getCollectionNames();
+
+       colls.forEach(function(name) {
+
+              var dbname = db.getName()
+
+              var fullname = db.getName()+"."+name;
+              if(confirmEnding(fullname,".files")){
+                db.getSiblingDB(dbname).getCollection(name).ensureIndex({"_id":1});
+                //sh.shardCollection(fullname,{"_id":1});
+              }else if(confirmEnding(fullname,".chunks")){
+                db.getSiblingDB(dbname).getCollection(name).ensureIndex({"files_id":1,"n":1 });
+                //sh.shardCollection(fullname,{"files_id":1,"n":1});
+            }else{
+                db.getSiblingDB(dbname).getCollection(name).ensureIndex({"_id":"hashed"});
+                //sh.shardCollection(fullname,{"_id":"hashed"});
+            }
+              
+
+
+ 
+
+       })
+
+}
+
+//创建分片
+
+function makeSharding(){
+
+        var colls = db.getCollectionNames();
+
+        colls.forEach(function(name) {
+
+                var dbname = db.getName()
+
+                sh.enableSharding(dbname)
+                var fullname = dbname+"."+name;
+                if(confirmEnding(fullname,".files")){
+                sh.shardCollection(fullname,{"_id":1});
+				}else if(confirmEnding(fullname,".chunks")){
+					sh.shardCollection(fullname,{"files_id":1,"n":1});
+				}else if(confirmEnding(fullname,".dbchangelog")){
+					sh.shardCollection(fullname,{"changeId":1, "author":1});
+				}else if(confirmEnding(fullname,".mongobeelock")){
+					sh.shardCollection(fullname,{"key":1});
+				}else{
+					sh.shardCollection(fullname,{"_id":"hashed"});
+				}   
+
+
+
+        })
+
+}
+
+ 

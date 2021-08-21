@@ -1,0 +1,12 @@
+###
+# Tags:
+#     install  --  安装 nmon
+#     start    --  启动监控，roles/nmon/tasks/start.yml
+#     stop     --  强制停止 nmon 进程
+#     fetch    --  拉取 nmon 监控结果
+#     clean    --  清除本地监控结果
+- name: Deploy nmon
+  hosts: "{{ inventory | default('*_unique') }}"
+  tasks:
+  - import_role:
+      name: nmon

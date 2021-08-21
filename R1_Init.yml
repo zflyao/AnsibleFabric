@@ -1,0 +1,14 @@
+# initializer
+# Use the -e input variable, eg：-e "inventory=org1_peer"
+# 初始化新建用户：blockchain / ZXCasd!2
+---
+
+- name: initializer
+  hosts: "{{ inventory | default('*_unique') }}"
+  vars_files:
+    - 1_vars/common.yml
+  tasks:
+  - import_role:
+      name: common
+    vars:
+      operation: sysinit

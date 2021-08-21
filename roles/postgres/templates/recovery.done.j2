@@ -1,0 +1,5 @@
+standby_mode = 'on'
+primary_conninfo = 'application_name={{ standby }} user={{ pg_cpuser }} password={{ pg_cppw }} host=db1.{{ domain }} port={{ db_port }} sslmode=prefer sslcompression=1'
+trigger_file = 'failover.now'
+recovery_target_timeline = 'latest'
+

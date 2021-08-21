@@ -1,0 +1,167 @@
+---
+# Fabric Peer
+org_name: org1
+org_mspid: Org1MSP
+peer_domain: "{{ org_name }}.{{ fabric_domain }}"
+join_channels:
+- channelyonyoubucket
+
+# Fabric Orderer
+own_orderer: true
+ord_name: ord1
+ord_mspid: Orderer1MSP
+orderer_domain: "{{ ord_name }}.{{ fabric_domain }}"
+
+# Mongo
+mongodb_user: mongouser
+mongodb_pass: mongouser123
+mongodb_port: 27010
+mongodb_url: "mongodb://{{ mongodb_user }}:{{ mongodb_pass }}@{{ groups[org_name ~ '_mongodb'] | map('regex_replace','(.+)','\\1.' ~ fabric_domain ~ ':' ~ mongodb_port) | join(',') }}"
+
+# PostgreSQL
+pg_user: pg_user
+pg_pass: pg_user123
+pg_port: 5432
+pg_url: jdbc:postgresql://db0.{{ peer_domain }}:{{ pg_port }}
+
+# RabbitMQ
+rabbitmq_port: 5672
+rabbitmq_address: "{{ groups[org_name ~ '_rabbitmq'] | map('regex_replace','(.+)','\\1.' ~ fabric_domain ~ ':' ~ rabbitmq_port) | join(',') }}"
+rabbitmq_user: loc
+rabbitmq_pass: loc
+
+# SLB
+slb:
+  inner: 
+  private:
+  public:
+
+## App Instances
+instances:
+  yonyoubucket_voucher:
+    platform-hfclient-sdk-ws:
+      version: RELEASE_20190912111801
+      listen_port: 6660
+      domain: apiserver.{{ peer_domain }}
+      channel: channelyonyoubucket
+      chaincode: yonyoubucket
+      on_group: "{{ org_name }}_api"
+    platform-service-runtime-ws:
+      version: platform-runtime-1.2.1.SRA.RELEASE_20191225001
+      platform_id: pid002
+      listen_port: 4000
+      domain: platform.{{ peer_domain }}
+      mongodb_database: voucher_platform
+      pg_database: voucher_platform
+      rabbitmq_queue: voucher_platformQueue_{{ org_name }}
+      rabbitmq_exchange: voucherQueue_{{ org_name }}
+      on_group: "{{ org_name }}_platform"
+    keylist-ws:
+      version: v1.0.0_tag_hotfix
+      listen_port: 6000
+      domain: keylist.{{ peer_domain }}
+      mongodb_database: voucher_platform
+      chaincode: yonyoubucket
+      on_group: "{{ org_name }}_keylist"
+    voucher-ws:
+      version: v2.0.3-yongyou-b20200218001
+      listen_port: 5010
+      domain: voucher.demo.tfrunchain.com
+      mongodb_database: voucher
+      pg_database: voucher
+      rabbitmq_queue: voucherQueue_{{ org_name }}
+      rabbitmq_exchange: voucherQueue_{{ org_name }}
+      on_group: "{{ org_name }}_java"
+    voucher-view:
+#      version: v2.0.5_srl-yfqz-b20200212_demo
+#      version: v2.0.5_srl-yfqz-b20200222_demo
+#      version: v2.0.5_srl-yfqz-b20200227_demo
+      version: v2.0.5_srl-yfqz-b20200227001_demo
+      listen_port: 80
+      domain: voucher.demo.tfrunchain.com
+      on_group: "{{ org_name }}_nginx"
+
+  yonyoubucket_df:
+    platform-hfclient-sdk-ws:
+      version: RELEASE_20190912111801
+      listen_port: 6661
+      domain: apiserver.{{ peer_domain }}
+      channel: channelyonyoubucket
+      chaincode: yonyoubucket
+      on_group: "{{ org_name }}_api"
+    platform-service-runtime-ws:
+      version: platform-runtime-1.2.1.SRA.RELEASE_20191225001
+      platform_id: pid001
+      listen_port: 4001
+      domain: platform.{{ peer_domain }}
+      mongodb_database: df_platform
+      pg_database: df_platform
+      rabbitmq_queue: df_platformQueue_{{ org_name }}
+      rabbitmq_exchange: dfQueue_{{ org_name }}
+      on_group: "{{ org_name }}_platform"
+    keylist-ws:
+      version: v1.0.0_tag_hotfix
+      listen_port: 6001
+      domain: keylist.{{ peer_domain }}
+      mongodb_database: df_platform
+      chaincode: yonyoubucket
+      on_group: "{{ org_name }}_keylist"
+    domestic-factoring-ws:
+      version: v2.0.1-yongyou-b20200218001
+      listen_port: 5001
+      domain: factoring.demo.tfrunchain.com
+      mongodb_database: df
+      pg_database: df
+      rabbitmq_queue: dfQueue_{{ org_name }}
+      rabbitmq_exchange: dfQueue_{{ org_name }}
+      on_group: "{{ org_name }}_java"
+    factoring-portal:
+#      version: v2.0.1_srl-bl-b20200212_demo
+#      version: v2.0.1_srl-bl-b20200221_demo
+#      version: v2.0.1_srl-bl-b20200222_demo
+#      version: v2.0.1_srl-bl-b20200227_demo
+      version: v2.0.1_srl-bl-b20200227001_demo
+      listen_port: 80
+      domain: factoring.demo.tfrunchain.com
+      on_group: "{{ org_name }}_nginx"
+
+  yonyoubucket_rdf:
+    platform-hfclient-sdk-ws:
+      version: RELEASE_20190912111801
+      listen_port: 6662
+      domain: apiserver.{{ peer_domain }}
+      channel: channelyonyoubucket
+      chaincode: yonyoubucket
+      on_group: "{{ org_name }}_api"
+    platform-service-runtime-ws:
+      version: platform-runtime-1.2.1.SRA.RELEASE_20191225001
+      platform_id: pid003
+      listen_port: 4002
+      domain: platform.{{ peer_domain }}
+      mongodb_database: rdf_platform
+      pg_database: rdf_platform
+      rabbitmq_queue: rdf_platformQueue_{{ org_name }}
+      rabbitmq_exchange: rdfQueue_{{ org_name }}
+      on_group: "{{ org_name }}_platform"
+    keylist-ws:
+      version: v1.0.0_tag_hotfix
+      listen_port: 6002
+      domain: keylist.{{ peer_domain }}
+      mongodb_database: rdf_platform
+      chaincode: yonyoubucket
+      on_group: "{{ org_name }}_keylist"
+    domestic-factoring-ws:
+      version: v2.0.1-yongyou-b20200218001
+      listen_port: 5002
+      domain: rdf.demo.tfrunchain.com
+      mongodb_database: rdf
+      pg_database: rdf
+      rabbitmq_queue: rdfQueue_{{ org_name }}
+      rabbitmq_exchange: rdfQueue_{{ org_name }}
+      on_group: "{{ org_name }}_java"
+    factoring-portal:
+      version: v2.0.1_srlfxbl-b20200212_demo
+      listen_port: 80
+      domain: rdf.demo.tfrunchain.com
+      on_group: "{{ org_name }}_nginx"
+

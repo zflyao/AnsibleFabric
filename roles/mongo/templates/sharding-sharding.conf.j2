@@ -1,0 +1,13 @@
+fork=true
+auth=true
+directoryperdb=true
+dbpath={{ sharding_dbpath }}
+logappend=true
+logpath={{ worker_home }}/mongodb/logs/mongodb.log
+pidfilepath={{ worker_home }}/mongodb/logs/mongodb.pid
+port={{ shard_port }}
+replSet={{ replset }}
+oplogSize=1024
+maxConns=20000
+shardsvr=true
+keyFile={{ worker_home }}/mongodb/auth/mongodb-keyfile

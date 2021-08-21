@@ -1,0 +1,9 @@
+[program:{{ app_id }}]
+autorestart = true
+autostart = true
+command = bash -c "./deploy.sh start"
+directory = {{ work_dir }}
+startretries = 5
+startsecs = 10
+user = {{ worker_user }}
+stopasgroup = true

@@ -1,0 +1,16 @@
+---
+- name: 检测 orderer 容器是否正在运行
+  shell: docker ps -a -f name=^/{{ inventory_hostname }}$ | grep -o {{ inventory_hostname }}
+  register: container_ps
+  ignore_errors: yes
+
+- name: 停止 orderer
+  command: docker-compose down
+  args:
+    chdir: "{{ fabric_home }}"
+  when: container_ps.rc == 0
+
+- name: 确认已停止 orderer 容器，否则退出
+  shell: docker ps -f name=^/{{ inventory_hostname }}$ | grep -o {{ inventory_hostname }}
+  register: container_ps_twice
+  failed_when: container_ps_twice.rc == 0
