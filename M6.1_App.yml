@@ -39,7 +39,7 @@
 
 - name: "Deploying {{ app_name }}"
   hosts: "{{ inventory | default(hostvars['localhost']['inventory_p']['user_input']) }}"
-  gather_facts: false
+  gather_facts: true
   vars_files:
     - 1_vars/common.yml
     - 1_vars/chaincode.yml
@@ -67,7 +67,8 @@
     set_fact:
       time: "{{ lookup('pipe', 'date +%Y%m%d.%H%M%S') }}"
       instance_dir: "{{ worker_home }}/{{ instance_name }}"
-      work_dir: "{{ instance_dir }}/{{ app_name }}"
+      #work_dir: "{{ instance_dir }}/{{ app_name }}"
+      work_dir: "{{ worker_home }}/{{ instance_name }}/{{ app_name }}"
     tags: always
 
   - name: Include app vars file
@@ -132,6 +133,13 @@
       # channel: "{{ instances[instance_name]['platform-hfclient-sdk-ws']['channel'] }}"
     tags: config
     when: instance_name == "platform-hfclient-sdk-ws"
+
+  - name: set platform vars
+    set_fact:
+      api_vars: "{{ fabric_channels[channel_item].api }}"
+    loop: "{{join_channels}}"
+    loop_control:
+      loop_var: channel_item
 
   - import_role:
       name: app_deploy

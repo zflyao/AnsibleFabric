@@ -1,0 +1,109 @@
+logging.config=${root.path}/config/logback-spring.xml
+logging.file=${root.path}/logs/yunying.log
+server.port={{ instance_vars.listen_port }}
+spring.application.name=jeecg-boot-module-system
+spring.application.version=2.0.0
+platform.component.client.platformRuntimeServer=http://{{ instances[instance_name]['platform-service-runtime-ws']['domain'] }}:{{ instances[instance_name]['platform-service-runtime-ws']['listen_port'] }}
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+
+spring.datasource.dynamic.datasource.master.url={{ pg_url }}/{{ instance_vars.pg_database }}
+spring.datasource.dynamic.datasource.master.username={{ pg_user }}
+spring.datasource.dynamic.datasource.master.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.master.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.dfplatform.url={{ pg_url }}/supplychaindf_platform
+spring.datasource.dynamic.datasource.dfplatform.username={{ pg_user }}
+spring.datasource.dynamic.datasource.dfplatform.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.dfplatform.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.voucherplatform.url={{ pg_url }}/supplychainvoucher_platform
+spring.datasource.dynamic.datasource.voucherplatform.username={{ pg_user }}
+spring.datasource.dynamic.datasource.voucherplatform.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.voucherplatform.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.df.url={{ pg_url }}/supplychaindf
+spring.datasource.dynamic.datasource.df.username={{ pg_user }}
+spring.datasource.dynamic.datasource.df.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.df.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.df2.url={{ pg_url }}/supplychaindf
+spring.datasource.dynamic.datasource.df2.username={{ pg_user }}
+spring.datasource.dynamic.datasource.df2.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.df2.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.voucher.url={{ pg_url }}/supplychainvoucher
+spring.datasource.dynamic.datasource.voucher.username={{ pg_user }}
+spring.datasource.dynamic.datasource.voucher.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.voucher.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.voucher2.url={{ pg_url }}/supplychainvoucher
+spring.datasource.dynamic.datasource.voucher2.username={{ pg_user }}
+spring.datasource.dynamic.datasource.voucher2.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.voucher2.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.dfplatform2.url={{ pg_url }}/supplychaindf_platform
+spring.datasource.dynamic.datasource.dfplatform2.username={{ pg_user }}
+spring.datasource.dynamic.datasource.dfplatform2.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.dfplatform2.driver-class-name=org.postgresql.Driver
+spring.datasource.dynamic.datasource.voucherplatform2.url={{ pg_url }}/supplychainvoucher_platform
+spring.datasource.dynamic.datasource.voucherplatform2.username={{ pg_user }}
+spring.datasource.dynamic.datasource.voucherplatform2.password={{ pg_pass }}
+spring.datasource.dynamic.datasource.voucherplatform2.driver-class-name=org.postgresql.Driver
+
+#spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}
+#spring.datasource.username={{ pg_user }}
+#spring.datasource.password={{ pg_pass }}
+
+hoperun.plugins.amqp.fanoutQueueName={{ instance_vars.rabbitmq_queue }}
+hoperun.plugins.amqp.fanoutExchangeName={{ instance_vars.rabbitmq_exchange }}
+hoperun.plugins.amqp.isStartEventReceiver=true
+hoperun.blockchain.configbean=true
+hoperun.blockchain.isEncrypt=true
+spring.rabbitmq.addresses={{ rabbitmq_address }}
+spring.rabbitmq.username={{ rabbitmq_user }}
+spring.rabbitmq.password={{ rabbitmq_pass }}
+spring.redis.host={{ instance_vars.redis_host }}
+spring.redis.port={{ instance_vars.redis_port }}
+spring.redis.password= {{ instance_vars.redis_pass }}
+runchain.application.enableVerifySign=false
+hoperun.platform.base.apiserver.host=http://{{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}:{{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}/assetTradingPlatform
+hoperun.platform.base.loadEndorserKey=false
+#runchain.application.keyListServiceUrl=http://{#{ instances[instance_name]['keylist-ws']['domain'] }}:{{ instances[instance_name]['keylist-ws']['listen_port'] }#}/api/keylist
+jsb.component.client.inUse=false
+
+runchain.cfca.sadk.systemAutoSignUrl=http://localhost:5004/jeecg-boot
+# 运营平台地址
+operate.opLoginUrl=http://localhost:5004/jeecg-boot/api/authenticate
+#友信地址
+yonyou.login.api.voucher=http://voucher.finrunchain.com
+#保理地址
+yonyou.login.api.df=http://df.finrunchain.com
+
+hoperun.platform.base.callBackQueryInterval=3000
+hoperun.platform.base.enabled=false
+
+server.tomcat.basedir={{ instance_dir }}/df_tmp
+
+#应用地址
+runchain.application.applicationUrl={{ instance_vars.public_addr }}
+#cfca配置
+runchain.cfca.sadk.cfcaUrl={{ thirdparty['shuronglianCfcaSadk'][env_type]['url'] }}
+runchain.cfca.sadk.inUse=false
+
+runchain.registration.priPath=${root.path}/config/root@runchain.com.pri
+runchain.registration.pubPath=${root.path}/config/root@runchain.com.cer
+#运营调用友信的接口
+cleanaccount.queryVoucherPageExpiredClean.url=http://voucher.finrunchain.com/api/payVoucher/queryVoucherPageExpiredCleanJeecg
+cleanaccount.queryCleanBatPage.url=http://voucher.finrunchain.com/api/virtualAcc/queryCleanBatPage
+cleanaccount.queryCleanDtlPage.url=http://voucher.finrunchain.com/api/virtualAcc/queryCleanDtlPage
+cleanaccount.cleanTaskHand.url=http://voucher.finrunchain.com/api/virtualAcc/cleanTask/hand
+cleanaccount.queryPayReportClean.url=http://voucher.finrunchain.com/api/payReport/queryPayReportClean
+
+#runchain.application.operatorOrgId=53561af0118169270e173a908d55697d2560431d188dbacd94b38dc4707fd3651591422376312
+
+#hoperun.platform.base.enabled=true
+
+#平台手续费率
+financing.service.rate=0.02
+
+#operate.username=13024030001
+operate.username=18951690696
+operate.opLoginUrl=http://localhost:5004/jeecg-boot/api/authenticate
+blockChainSystem.url=10.0.0.212
+blockChainSystem.port=8080
+businessSystem.url=10.0.0.211
+businessSystem.port=5002

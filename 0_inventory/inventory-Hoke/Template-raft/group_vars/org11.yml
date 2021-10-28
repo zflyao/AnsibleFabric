@@ -9,11 +9,11 @@ join_channels:
 - channelfft
 
 # Fabric Orderer
-own_orderer: true
-ord_name: ord11
-ord_mspname: Orderer11MSP
-ord_mspid: Orderer11MSP
-orderer_domain: ord11.tfrunchain.com
+own_orderer: false
+ord_name: ord1
+ord_mspname: Orderer1MSP
+ord_mspid: Orderer1MSP
+orderer_domain: ord1.tfrunchain.com
 
 instances:
   haiyun:

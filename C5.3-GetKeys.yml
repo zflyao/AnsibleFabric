@@ -4,7 +4,7 @@
   hosts: "peer0.{{ org | default('org1') }}"
   tasks:
   - include_vars:
-      file: vars/chaincode.yml
+      file: 1_vars/chaincode.yml
 
   - include_role:
       name: fabric_cli

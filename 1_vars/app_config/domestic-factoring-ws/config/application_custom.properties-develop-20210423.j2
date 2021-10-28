@@ -1,0 +1,47 @@
+logging.config=${root.path}/config/logback-spring.xml
+logging.file=${root.path}/logs/factoring.log
+server.port={{ instance_vars.listen_port }}
+spring.application.name=domesticFactoring
+spring.application.version=2.0.0
+platform.component.client.platformRuntimeServer=http://{{ instances[instance_name]['platform-service-runtime-ws']['domain'] }}:{{ instances[instance_name]['platform-service-runtime-ws']['listen_port'] }}
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+hoperun.plugins.amqp.fanoutQueueName={{ instance_vars.rabbitmq_queue }}
+hoperun.plugins.amqp.fanoutExchangeName={{ instance_vars.rabbitmq_exchange }}
+hoperun.plugins.amqp.isStartEventReceiver=true
+hoperun.blockchain.configbean=true
+hoperun.blockchain.isEncrypt=true
+spring.rabbitmq.addresses={{ rabbitmq_address }}
+spring.rabbitmq.username={{ rabbitmq_user }}
+spring.rabbitmq.password={{ rabbitmq_pass }}
+hoperun.platform.base.apiserver.host=http://{{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}:{{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}/assetTradingPlatform
+#runchain.application.keyListServiceUrl=http://{#{ instances[instance_name]['keylist-ws']['domain'] }}:{{ instances[instance_name]['keylist-ws']['listen_port'] }#}/api/keylist
+jsb.component.client.inUse=false
+
+hoperun.platform.base.callBackQueryInterval=3000
+server.tomcat.basedir={{ instance_dir }}/df_tmp
+
+#应用地址
+runchain.application.applicationUrl={{ instance_vars.public_addr }}
+#cfca配置
+#runchain.cfca.sadk.cfcaUrl={#{ thirdparty['shuronglianCfcaSadk'][env_type]['url'] }#}
+runchain.cfca.sadk.inUse=false
+
+runchain.registration.priPath=${root.path}/config/051@000006@N91120118MA06AT5407@1.pri
+runchain.registration.pubPath=${root.path}/config/051@000006@N91120118MA06AT5407@1.cer
+
+runchain.application.operatorOrgId=53561af0118169270e173a908d55697d2560431d188dbacd94b38dc4707fd3651591422376312
+
+hoperun.platform.base.enabled=true
+
+######YONYOU###########
+#企业信息配置
+company.info.code: http://10.21.102.162:28686/jeecg-boot/comInfoCer/getComInfoCo/
+#法人二要素鉴权
+authentica.two: http://10.21.102.162:28686/jeecg-boot/auth/two
+
+
+######YONYOU############
