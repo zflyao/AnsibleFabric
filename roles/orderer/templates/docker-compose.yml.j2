@@ -68,7 +68,11 @@ services:
     - 7050:7050
 {% endif %}
 {% if fabric_minor_ver | int >= 4 %}
+{% if ord_name == fabric_genesis_orgs.ords[0] %}
+    - 844{{ inventory_hostname_short | regex_search('\\d+') | int + 1 }}:8443
+{% else %}
     - 8443:8443
+{% endif %}
 {% endif %}
     extra_hosts:
 {% if fabric_orderer_type == "kafka" %}

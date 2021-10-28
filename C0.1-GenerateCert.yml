@@ -8,6 +8,8 @@
 - name: GENERATE and PULL the MSP certs
   hosts: peer0.{{ org | default('*') }}
   gather_facts: false
+  vars_files:
+  - 1_vars/common.yml
   tasks:
   - import_role:
       name: fabric_cli

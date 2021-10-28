@@ -1,0 +1,16 @@
+---
+# Fabric Peer
+org_name: org1
+org_mspname: Org1MSP
+org_mspid: Org1MSP
+org_domain: finblockchain.com
+peer_domain: org1.finblockchain.com
+join_channels: 
+- channelsupplychain
+
+# Fabric Orderer
+own_orderer: true
+ord_name: ord1
+ord_mspname: Orderer1MSP
+ord_mspid: Orderer1MSP
+orderer_domain: ord1.finblockchain.com

@@ -1,0 +1,32 @@
+[kafka]
+kafka1 ansible_ssh_host=10.10.7.31
+kafka2 ansible_ssh_host=10.10.7.43
+kafka3 ansible_ssh_host=10.10.7.12
+kafka4 ansible_ssh_host=10.10.7.13
+
+
+[ord1_orderer]
+orderer0.ord1 ansible_ssh_host=10.0.0.213
+orderer1.ord1 ansible_ssh_host=10.0.0.213
+orderer2.ord1 ansible_ssh_host=10.0.0.213
+orderer3.ord1 ansible_ssh_host=10.0.0.214
+orderer4.ord1 ansible_ssh_host=10.0.0.214
+
+[org1_peer]
+peer0.org1 ansible_ssh_host=10.0.0.213 genesis=true
+
+#[org1_api]
+#api0.org1 ansible_ssh_host=10.0.0.213
+#api1.org1 ansible_ssh_host=10.0.0.213
+
+#[org1_java]
+#app0.org1 ansible_ssh_host=10.0.0.213
+
+[org1:children]
+#org1_java
+kafka
+org1_peer
+ord1_orderer
+
+[org1_unique:children]
+org1_peer

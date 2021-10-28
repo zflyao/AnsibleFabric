@@ -1,0 +1,173 @@
+---
+# Fabric Peer
+org_name: org2
+org_mspname: Org2MSP
+org_mspid: Org2MSP
+org_domain: finblockchain.com
+peer_domain: org2.finblockchain.com
+join_channels:
+- channelsupplychain
+
+# Fabric Orderer
+own_orderer: false
+ord_name: ord1
+ord_mspname: Orderer1MSP
+ord_mspid: Orderer1MSP
+orderer_domain: ord1.finblockchain.com
+
+slb:
+  inner: 10.0.0.218
+  private:
+  public:
+
+mongodb_user: mongouser
+mongodb_pass: mongouser123
+mongodb_port: 27017
+mongodb_url: "mongodb://{{ mongodb_user }}:{{ mongodb_pass }}@{{ groups[org_name~'_mongodb'] | map('regex_replace','(mongo\\d+).*','\\1.' ~ org_domain ~ ':' ~ mongodb_port) | join(',') }}"
+pg_port: 5432
+pg_url: jdbc:postgresql://db0.{{ org_domain }}:{{ pg_port }}
+pg_user: postuser
+pg_pass: postuser123
+
+rabbitmq_port: 5672
+rabbitmq_address: "{{ groups[org_name ~ '_rabbitmq'] | map('regex_replace','(mq\\d+)_.*$','\\1.' ~ peer_domain ~ ':' ~ rabbitmq_port) | join(',') }}"
+rabbitmq_user: loc
+rabbitmq_pass: loc
+
+redis_host: 10.0.0.215
+
+instances:
+  supplychain_voucher:
+    platform-hfclient-sdk-ws:
+      version: ws-1.2.2.005.RELEASE
+      #listen_port: 8886
+      listen_port: 5555
+      domain: apiserver.{{ org_domain }}
+      channel: channelsupplychain
+      chaincode: supplychain
+      rabbitmq_exchange: supplychainExchange
+      on_group: "{{ org_name }}_api"
+    platform-service-runtime-ws:
+      version: 1.2.0.004.RELEASE.1
+      platform_id: pid001
+      listen_port: 4002
+      domain: platform.{{ org_domain }}
+      mongodb_database: supplychainvoucher_platform
+      pg_database: supplychainvoucher_platform
+      rabbitmq_queue: supplychainVoucherPlatformQueue
+      rabbitmq_exchange: supplychainExchange
+      project: supplychain
+      verify_issuer: false
+      on_group: "{{ org_name }}_supplychainplatform"
+    voucher-ws:
+      version: develop-20210423
+      listen_port: 5002
+      jvm_args: -Xms1G -Xmx1G -Xmn400m
+      public_addr: https://yyxt.shufafin.com
+      mongodb_database: supplychainvoucher
+      pg_database: supplychainvoucher
+      rabbitmq_queue: supplychainVoucherQueue
+      rabbitmq_exchange: supplychainExchange
+      supervisor: true
+      on_group: "{{ org_name }}_supplychainjava"
+    voucher-view:
+      version: 20210423
+      server_name: yyxt.shufafin.com
+      listen_port: 8080
+      public_addr: https://yyxt.shufafin.com
+      on_group: "{{ org_name }}_nginx"
+
+  supplychain_df:
+    platform-hfclient-sdk-ws:
+      version: ws-1.2.2.005.RELEASE
+      #listen_port: 8887
+      listen_port: 5555
+      domain: apiserver.{{ org_domain }}
+      channel: channelsupplychain
+      chaincode: supplychain
+      rabbitmq_exchange: supplychainExchange
+      on_group: "{{ org_name }}_api"
+    platform-service-runtime-ws:
+      version: 1.2.0.004.RELEASE.1
+      platform_id: pid002
+      listen_port: 4003
+      domain: platform.{{ org_domain }}
+      mongodb_database: supplychaindf_platform
+      pg_database: supplychaindf_platform
+      rabbitmq_queue: supplychaindfPlatformQueue
+      rabbitmq_exchange: supplychainExchange
+      project: supplychain
+      verify_issuer: false
+      on_group: "{{ org_name }}_platform"
+    domestic-factoring-ws:
+      version: develop-20210423
+      listen_port: 5003
+      jvm_args: -Xms1G -Xmx1G -Xmn400m
+      public_addr: https://qblt.shufafin.com
+      mongodb_database: supplychaindf
+      pg_database: supplychaindf
+      rabbitmq_queue: supplychaindfQueue
+      rabbitmq_exchange: supplychainExchange
+      instance_configs:
+      - path: config/051@000006@N91120118MA06AT5407@1.cer
+        unchanged: true
+      - path: config/051@000006@N91120118MA06AT5407@1.pri
+        unchanged: true
+      on_group: "{{ org_name }}_java"
+      supervisor: true
+    factoring-portal:
+      version: 20210423_permissionconfig
+      server_name: qblt.shufafin.com
+      listen_port: 8080
+      public_addr: https://qblt.shufafin.com
+      on_group: "{{ org_name }}_nginx"
+
+  supplychain_jeecg:
+    platform-hfclient-sdk-ws:
+      version: ws-1.2.2.005.RELEASE
+      #listen_port: 8889
+      listen_port: 5555
+      domain: apiserver.{{ org_domain }}
+      channel: channelsupplychain
+      chaincode: supplychain
+      rabbitmq_exchange: supplychainExchange
+      on_group: "{{ org_name }}_api"
+    platform-service-runtime-ws:
+      version: 1.2.0.004.RELEASE.1
+      platform_id: pid003
+      listen_port: 4004
+      domain: platform.{{ org_domain }}
+      mongodb_database: supplychainjeecg_platform
+      pg_database: supplychainjeecg_platform
+      rabbitmq_queue: supplychainJeecgPlatformQueue
+      rabbitmq_exchange: supplychainExchange
+      project: supplychain
+      verify_issuer: false
+      on_group: "{{ org_name }}_platform"
+    jeecg-boot-parent:
+      version: develop-20210425002
+      listen_port: 5004
+      jvm_args: -Xms1G -Xmx1G -Xmn400m
+      public_addr: https://yyprotal.shufafin.com
+      mongodb_database: supplychainjeecg
+      pg_database: supplychainjeecg
+      redis_host: 10.0.0.215
+      redis_port: 6379
+      redis_pass: 123...qq.Com
+      rabbitmq_queue: jeecgQueue
+      rabbitmq_exchange: supplychainExchange
+      instance_configs:
+      - path: config/051@000006@N91120118MA06AT5407@1.cer
+        unchanged: true
+      - path: config/051@000006@N91120118MA06AT5407@1.pri
+        unchanged: true
+      supervisor: false
+      on_group: "{{ org_name }}_java"
+    factoring-portal:
+      version: v2.0.1-yongyou-supplychain-b20200608
+      server_name: yyprotal.shufafin.com
+      listen_port: 8080
+      public_addr: https://yyprotal.shufafin.com
+      on_group: "{{ org_name }}_nginx"
+
+

@@ -3,6 +3,8 @@
 ---
 - name: 创建分发 sshkey
   hosts: "{{ inventory | default('*_unique') }}"
+  vars_files:
+  - 1_vars/common.yml
   tasks:
   - import_role:
       name: common 

@@ -19,7 +19,8 @@
   register: result
 
 - debug:
-    msg: "{{ res['stderr_lines'][-1] }}"
+    msg: "{{ res }}"
+    #msg: "{{ res['stderr_lines'][-1] }}"
   loop: "{{ result.results }}"
   loop_control:
     loop_var: res

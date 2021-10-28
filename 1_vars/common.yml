@@ -27,7 +27,8 @@ ansible_ssh_common_args: '-o ConnectTimeout=60s'
 # Env related
 inventory_dir_basename: "{{ inventory_dir | basename }}"
 # Environment Type, such as: demo, test, sit, prod ...
-env_type: "{{ inventory_dir_basename.split('-')[1] | lower }}"
+#env_type: "{{ inventory_dir_basename.split('-')[1] | lower }}"
+env_type: "prod"
 # Ansible local file directory
 env_src: "environment/{{ inventory_dir_basename }}"
 ansible_ssh_private_key_file: "{{ playbook_dir }}/{{ env_src }}/sshkey/id_rsa"
@@ -39,10 +40,14 @@ worker_user: blockchain
 worker_uid: 1500
 worker_home: "/home/{{ worker_user }}"
 summary_dir: "{{ worker_home }}/summary"
-yum: true
+yum: yes
+# private
+#centosrepo: http://10.10.255.201:8081/repository
+# ali
+centosrepo: http://mirrors.cloud.aliyuncs.com
 
 # Docker
-harbor: true
+harbor: false
 harbor_domain: hub.finrunchain.com
 harbor_user: ansible
 harbor_passwd: Ansible123
@@ -60,11 +65,14 @@ cc_nodeevn_tag: 1.4.9sm-patched
 fabric_crypto_type: sm2
 fabric_minor_ver: "{{ fabric_deploy_ver.split('.')[1] }}"
 
+conn_mode: inner
+
 # CC online download
 cc_download:
   private_address: 10.10.255.201:8081
   public_address: repo.finrunchain.com
   url: /repository/ansible/chaincode/1.4.4
+
 
 # M4.3_API.yml
 HFApi:
@@ -93,7 +101,28 @@ HFApi:
     search_regex: is running
 
 # RabbitMQ
-rabbitmq_port: 5672
-rabbitmq_address: "{{ groups[api_vars.rabbitmq_group] | map('regex_replace','(mq\\d+).*$','\\1' ~ ':' ~ rabbitmq_port) | join(',') }}"
-rabbitmq_user: loc
-rabbitmq_pass: loc
+#rabbitmq_port: 5672
+#rabbitmq_address: "{{ groups[api_vars.rabbitmq_group] | map('regex_replace','(mq\\d+).*$','\\1' ~ ':' ~ rabbitmq_port) | join(',') }}"
+#rabbitmq_user: loc
+#rabbitmq_pass: loc
+
+platform:
+  supplychain:
+  - id: pid001
+    scheme: http
+    host: platform.org2.finblockchain.com
+    port: 4002
+    fabric_id: org2
+    description: supplychain
+  - id: pid002
+    scheme: http
+    host: platform.org2.finblockchain.com
+    port: 4003
+    fabric_id: org2
+    description: supplychain-saas
+#  - id: pid003
+#    scheme: http
+#    host: platform.org23.finblockchain.cn
+#    port: 4004
+#    fabric_id: org23
+#    description: supplychain-operation

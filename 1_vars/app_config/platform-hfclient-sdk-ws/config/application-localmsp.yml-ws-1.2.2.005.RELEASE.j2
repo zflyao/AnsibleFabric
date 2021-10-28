@@ -45,6 +45,8 @@ platform:
                 domain: {{ orderer_domain }}
             peerOrganizations:
             - name: {{ peer_domain }}
+              # 机构msp配置（必须），该版本程序如果不配置，可能导致加载背书秘钥失败
+              mspId: {{ org_mspid }}
               peers:
               - name: peer{{ server_id }}.{{ peer_domain }}
                 peerLocation: grpcs://peer{{ server_id }}.{{ peer_domain }}:7051

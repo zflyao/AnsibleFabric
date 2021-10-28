@@ -27,11 +27,11 @@ services:
 # MongoDB
 {% for each_mongo in groups[org_name~"_mongodb"] %}
       {{ each_mongo }}.{{ peer_domain }}: {{ hostvars[each_mongo]['ansible_ssh_host'] }}
+      mongodb{{ each_mongo|regex_search('\\d+') }}: {{ hostvars[each_mongo]['ansible_ssh_host'] }}
 {% endfor %}
 # RabbitMQ
 {% for each_mq in groups[org_name~'_rabbitmq'] %}
       {{ each_mq }}.{{ peer_domain }}: {{ hostvars[each_mq]['ansible_ssh_host'] }}
-      mongodb{{ each_mongo|regex_search('\\d+') }}: {{ hostvars[each_mongo]['ansible_ssh_host'] }}
 {% endfor %}
 # ApiSDK
       {{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}: {{ slb['inner'] | default(hostvars['api0.'~org_name]['ansible_ssh_host'], true) }}

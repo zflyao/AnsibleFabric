@@ -1,4 +1,5 @@
 ---
+
 - name: STAGE - STOP
   include_tasks: stop_{{ app_type }}.yml
   tags:

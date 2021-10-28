@@ -28,6 +28,7 @@ services:
 # MongoDB
 {% for each_mongo in groups[org_name~'_mongodb'] %}
       {{ each_mongo.split('.')[0] }}.{{ org_domain }}: {{ hostvars[each_mongo]['ansible_ssh_host'] }}
+      mongodb{{ each_mongo.split('.')[0] | regex_search('\\d+')}}: {{ hostvars[each_mongo]['ansible_ssh_host'] }}
 {% endfor %}
 # RabbitMQ
 {% for each_mq in groups[org_name~'_rabbitmq'] %}

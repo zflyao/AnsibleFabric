@@ -7,6 +7,7 @@
   loop: "{{ sub_directories }}"
   when: sub_directories | length > 0
 
+
 - name: 生成配置文件
   template:
     src: "{{ playbook_dir }}/1_vars/app_config/{{ app_name }}/{{ item.path }}{% if item.versioned is defined and item.versioned %}-{{ version }}{% endif %}.j2"

@@ -1,5 +1,5 @@
 # 需提供主机 inventory， automatically fetch channel from {{ join_channels }}
-# ansible-playbook -e inventory=org1_api M6_API.yml
+# ansible-playbook -e inventory=org1_api M4.3_API.yml
 ---
 - name: 上传 API 需要的 MSP
   hosts: "{{ inventory }}"

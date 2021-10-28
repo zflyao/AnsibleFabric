@@ -1,5 +1,8 @@
 # 可传入参数：channel
 
+- name: 检查order排序方式 and 区块链版本
+  debug:
+    msg: "type：{{ fabric_orderer_type }}； version: {{fabric_deploy_ver}}"
 - name: 生成 configtx.yaml 配置文件
   template:
     src: "generate/configtx_{{fabric_deploy_ver}}.yaml.j2"

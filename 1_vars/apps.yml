@@ -1,6 +1,31 @@
 ---
 
 ### Platform
+platform-hfclient-sdk-ws:
+  description: Fabric SDK (API)
+  app_type: docker
+  docker_image_project: fabric1.4
+  docker_image_name: runchainapi
+  sub_directories: [ 'config', 'scripts', 'logs' ]
+  config_files:
+  - path: current.info
+  - path: config/application-localmsp.yml
+    versioned: true
+  - path: config/application.yml
+  - path: config/logback-spring.xml
+  - path: scripts/data.txt
+  - path: scripts/query.sh
+    executable: true
+  - path: scripts/savedata.sh
+    executable: true
+  - path: scripts/healthz.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/logFile.log
+    search_regex: is running
+
+
 platform-service-runtime-ws:
   description: 平台服务
   app_type: docker
@@ -638,6 +663,26 @@ zone-service-ws:
       proxy_set_header Upgrade $http_upgrade;
       proxy_set_header Connection "upgrade";
     proxy_pass: 'http://zone-service-ws'
+
+
+jeecg-boot-parent:
+  description: 运营后端服务
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  config_files:
+  - path: config/application_custom.properties
+    versioned: false
+  - path: config/rsa_pri_0.pem
+    from_var: rsa_pri_0
+  - path: config/rsa_pub_0.pem
+    from_var: rsa_pub_0
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/yunying.log
+    search_regex: is running
 
 portal-service-ws:
   description:
