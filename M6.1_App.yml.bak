@@ -39,7 +39,7 @@
 
 - name: "Deploying {{ app_name }}"
   hosts: "{{ inventory | default(hostvars['localhost']['inventory_p']['user_input']) }}"
-  gather_facts: true
+  gather_facts: false
   vars_files:
     - 1_vars/common.yml
     - 1_vars/chaincode.yml
@@ -140,5 +140,7 @@
     loop: "{{join_channels}}"
     loop_control:
       loop_var: channel_item
+
+
   - import_role:
       name: app_deploy

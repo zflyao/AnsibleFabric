@@ -16,7 +16,7 @@ ord_mspid: Orderer1MSP
 orderer_domain: ord1.finblockchain.com
 
 slb:
-  inner: 10.0.0.218
+  inner: 10.10.101.35
   private:
   public:
 
@@ -30,8 +30,8 @@ pg_user: postuser
 pg_pass: postuser123
 
 rabbitmq_port: 5672
-#rabbitmq_address: "{{ groups[org_name ~ '_rabbitmq'] | map('regex_replace','(mq\\d+)_.*$','\\1.' ~ peer_domain ~ ':' ~ rabbitmq_port) | join(',') }}"
-rabbitmq_address: "{{ groups['rabbitmq'] | map('regex_replace','(mq\\d+)_.*$','\\1.' ~ peer_domain ~ ':' ~ rabbitmq_port) | join(',') }}"
+rabbitmq_address: "{{ groups[org_name ~ '_rabbitmq'] | map('regex_replace','(mq\\d+)_.*$','\\1.' ~ peer_domain ~ ':' ~ rabbitmq_port) | join(',') }}"
+#rabbitmq_address: "{{ groups['rabbitmq'] | map('regex_replace','(mq\\d+)_.*$','\\1.' ~ peer_domain ~ ':' ~ rabbitmq_port) | join(',') }}"
 rabbitmq_user: loc
 rabbitmq_pass: loc
 
@@ -61,7 +61,7 @@ instances:
       verify_issuer: false
       on_group: "{{ org_name }}_supplychainplatform"
     voucher-ws:
-      version: develop-20210423
+      version: develop-b20211029
       listen_port: 5002
       jvm_args: -Xms1G -Xmx1G -Xmn400m
       public_addr: https://yyxt.shufafin.com
@@ -101,7 +101,7 @@ instances:
       verify_issuer: false
       on_group: "{{ org_name }}_platform"
     domestic-factoring-ws:
-      version: develop-20210423
+      version: develop-b20211029
       listen_port: 5003
       jvm_args: -Xms1G -Xmx1G -Xmn400m
       public_addr: https://qblt.shufafin.com
@@ -136,7 +136,7 @@ instances:
     platform-service-runtime-ws:
       version: 1.2.0.004.RELEASE.1
       platform_id: pid003
-      listen_port: 4004
+      listen_port: 4002
       domain: platform.{{ org_domain }}
       mongodb_database: supplychainjeecg_platform
       pg_database: supplychainjeecg_platform
@@ -146,7 +146,7 @@ instances:
       verify_issuer: false
       on_group: "{{ org_name }}_platform"
     jeecg-boot-parent:
-      version: develop-20210425002
+      version: develop-b2021102901
       listen_port: 5004
       jvm_args: -Xms1G -Xmx1G -Xmn400m
       public_addr: https://yyprotal.shufafin.com

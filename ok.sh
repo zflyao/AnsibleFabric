@@ -41,8 +41,8 @@
 # 安装入盟的 Peer
 #ansible-playbook M4.2_Peer.yml -e inventory=org2_peer
 # 入盟 Peer 加入通道 
-ansible-playbook C4-JoinChannel.yml -e inventory=org2_peer
+#ansible-playbook C4-JoinChannel.yml -e inventory=org2_peer
 # 组织的 Peer 上安装链码
-ansible-playbook -e inventory='org2_peer' C5.1-InstallChaincode.yml
-
+#ansible-playbook -e inventory='org2_peer' C5.1-InstallChaincode.yml
+ansible-playbook M5_RabbitMQ.yml -e inventory=rabbitmq
 ansible-playbook -e inventory=org2_api M4.3_API.yml

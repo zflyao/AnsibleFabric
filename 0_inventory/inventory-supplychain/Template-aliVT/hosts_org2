@@ -24,23 +24,23 @@ db0.org2 ansible_ssh_host=10.10.101.34
 db1.org2 ansible_ssh_host=10.10.101.35
 db2.org2 ansible_ssh_host=10.10.101.36
 
-#[org2_rabbitmq]
-[rabbitmq]
+[org2_rabbitmq]
+#[rabbitmq]
 mq0 ansible_ssh_host=10.10.101.30
 mq1 ansible_ssh_host=10.10.101.31
 
 [org2:children]
-rabbitmq
-#org2_rabbitmq
+#rabbitmq
+org2_rabbitmq
 org2_peer
 org2_api
-#org2_java
-#org2_pg
-#org2_mongodb
-#org2_platform
+org2_java
+org2_pg
+org2_mongodb
+org2_platform
 
 [org2_unique:children]
 #org2_peer
 org2_api
-#org2_java
-#org2_pg
+org2_java
+org2_pg

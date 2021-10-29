@@ -5,5 +5,7 @@
 - name: deploy JDK
   hosts: "{{ inventory | default('*_unique') }}"
   gather_facts: false
+  vars_files:
+    - 1_vars/common.yml
   roles:
     - role: jdk

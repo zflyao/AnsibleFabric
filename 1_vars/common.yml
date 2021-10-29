@@ -51,6 +51,8 @@ harbor_passwd: Ansible123
 java_major_version: 8
 java_update_version: 91
 
+conn_mode: inner
+
 # Fabric common
 fabric_harbor_project: fabric-guomi/hyperledger
 cc_harbor_project: fabric-guomi/runchain
@@ -98,7 +100,29 @@ HFApi:
     search_regex: is running
 
 # RabbitMQ
-rabbitmq_port: 5672
-rabbitmq_address: "{{ groups[api_vars.rabbitmq_group] | map('regex_replace','(mq\\d+).*$','\\1' ~ ':' ~ rabbitmq_port) | join(',') }}"
-rabbitmq_user: loc
-rabbitmq_pass: loc
+#rabbitmq_port: 5672
+#rabbitmq_address: "{{ groups[api_vars.rabbitmq_group] | map('regex_replace','(mq\\d+).*$','\\1' ~ ':' ~ rabbitmq_port) | join(',') }}"
+#rabbitmq_user: loc
+#rabbitmq_pass: loc
+
+platform:
+  supplychain:
+  - id: pid001
+    scheme: http
+    host: platform.org2.finblockchain.com
+    port: 4002
+    fabric_id: org2
+    description: supplychain
+  - id: pid002
+    scheme: http
+    host: platform.org2.finblockchain.com
+    port: 4003
+    fabric_id: org2
+    description: supplychain-saas
+#  - id: pid003
+#  #    scheme: http
+#  #    host: platform.org23.finblockchain.cn
+#  #    port: 4004
+#  #    fabric_id: org23
+#  #    description: supplychain-operation
+##
