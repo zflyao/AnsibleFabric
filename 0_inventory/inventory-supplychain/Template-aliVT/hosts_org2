@@ -1,0 +1,46 @@
+[org2_peer]
+peer0.org2 ansible_ssh_host=10.10.101.31 
+
+[org2_api]
+api0.org2 ansible_ssh_host=10.10.101.31
+api1.org2 ansible_ssh_host=10.10.101.30
+
+[org2_platform]
+platform0.org2 ansible_ssh_host=10.10.101.32
+platform1.org2 ansible_ssh_host=10.10.101.33
+
+[org2_java]
+#app0.org2 ansible_ssh_host=10.10.101.30  # only for jeecg
+app0.org2 ansible_ssh_host=10.10.101.32
+app1.org2 ansible_ssh_host=10.10.101.33
+
+[org2_mongodb]
+mongo1.org2 ansible_ssh_host=10.10.101.34
+mongo2.org2 ansible_ssh_host=10.10.101.35
+mongo3.org2 ansible_ssh_host=10.10.101.36
+
+[org2_pg]
+db0.org2 ansible_ssh_host=10.10.101.34
+db1.org2 ansible_ssh_host=10.10.101.35
+db2.org2 ansible_ssh_host=10.10.101.36
+
+#[org2_rabbitmq]
+[rabbitmq]
+mq0 ansible_ssh_host=10.10.101.30
+mq1 ansible_ssh_host=10.10.101.31
+
+[org2:children]
+rabbitmq
+#org2_rabbitmq
+org2_peer
+org2_api
+#org2_java
+#org2_pg
+#org2_mongodb
+#org2_platform
+
+[org2_unique:children]
+#org2_peer
+org2_api
+#org2_java
+#org2_pg

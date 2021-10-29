@@ -48,8 +48,8 @@ Organizations:
         AnchorPeers:
             - Host: peer0.{{ hostvars['peer0.'~each_org]['peer_domain'] }}
               Port: 7051
-            - Host: peer1.{{ hostvars['peer1.'~each_org]['peer_domain'] }}
-              Port: 7051  
+#            - Host: peer1.{#{ hostvars['peer1.'~each_org]['peer_domain'] }#}
+#              Port: 7051  
 {% endfor %}
 
 ################################################################################

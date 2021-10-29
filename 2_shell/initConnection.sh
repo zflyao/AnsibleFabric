@@ -14,8 +14,8 @@ function getPassword() {
    
 
 cd $ANSIBLE_HOME
-INVENTORY=$(sed -n 's/^inventory\s*=\s*inventory-//p' ansible.cfg)
-SSH_USER=$(awk -F'[ :]+' '/ansible_ssh_user/ {print $2}' $ANSIBLE_HOME/inventory-$INVENTORY/group_vars/all.yml)
+INVENTORY=$(sed -n 's/^inventory\s*=\s*0_inventory\/inventory-//p' ansible.cfg)
+SSH_USER=$(awk -F'[ :]+' '/ansible_ssh_user/ {print $2}' $ANSIBLE_HOME/0_inventory/inventory-$INVENTORY/group_vars/all.yml)
 
 echo "Inventory 名称为 $INVENTORY"
 getPassword

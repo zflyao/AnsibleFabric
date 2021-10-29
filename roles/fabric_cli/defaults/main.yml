@@ -11,7 +11,8 @@ peer_hosts: "{{ groups[org_name ~ '_peer'] }}"
 orderer_hosts: "{{ groups[ord_name ~ '_orderer'] | default('[]') }}"
 orderer_length: "{{ orderer_hosts | length }}"
 default_orderer_host: orderer{{ cli_id }}.{{ orderer_domain }}
-default_orderer_port: "{% if orderer_length == 1 or org_name != fabric_genesis_orgs.orgs.0 %}7050{% else %}700{{ cli_id | int + 1 }}{% endif %}"
+#default_orderer_port: "{% if orderer_length == 1 or org_name != fabric_genesis_orgs.orgs.0 %}7050{% else %}700{{ cli_id | int + 1 }}{% endif %}"
+default_orderer_port: "{% if ord_name == fabric_genesis_orgs.ords[0] %}700{{ inventory_hostname_short | regex_search('\\d+') | int + 1 }}{% else %}7050{% endif %}"
 
 default_msp: >-
   'Org1MSP.member','Org2MSP.member','Org3MSP.member','Org4MSP.member','Org5MSP.member',

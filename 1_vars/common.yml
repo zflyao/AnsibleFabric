@@ -60,6 +60,11 @@ cc_nodeevn_tag: 1.4.9sm-patched
 fabric_crypto_type: sm2
 fabric_minor_ver: "{{ fabric_deploy_ver.split('.')[1] }}"
 
+# private
+centosrepo: http://10.10.255.201:8081/repository
+# ali
+# #centosrepo: http://mirrors.cloud.aliyuncs.com
+#
 # CC online download
 cc_download:
   private_address: 10.10.255.201:8081
