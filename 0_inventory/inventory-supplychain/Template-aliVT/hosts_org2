@@ -10,9 +10,9 @@ platform0.org2 ansible_ssh_host=10.10.101.32
 platform1.org2 ansible_ssh_host=10.10.101.33
 
 [org2_java]
-#app0.org2 ansible_ssh_host=10.10.101.30  # only for jeecg
-app0.org2 ansible_ssh_host=10.10.101.32
-app1.org2 ansible_ssh_host=10.10.101.33
+app0.org2 ansible_ssh_host=10.10.101.30  # only for jeecg
+#app0.org2 ansible_ssh_host=10.10.101.32
+#app1.org2 ansible_ssh_host=10.10.101.33
 
 [org2_mongodb]
 mongo1.org2 ansible_ssh_host=10.10.101.34

@@ -105,6 +105,13 @@ HFApi:
 #rabbitmq_user: loc
 #rabbitmq_pass: loc
 
+#CFCA
+cfca_t: 10.10.101.32
+cfca_p:
+
+## env
+env_type: "prod"
+
 platform:
   supplychain:
   - id: pid001

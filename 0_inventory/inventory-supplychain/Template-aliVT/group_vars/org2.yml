@@ -64,7 +64,7 @@ instances:
       version: develop-b20211029
       listen_port: 5002
       jvm_args: -Xms1G -Xmx1G -Xmn400m
-      public_addr: https://yyxt.shufafin.com
+      public_addr: http://voucher.vt.com
       mongodb_database: supplychainvoucher
       pg_database: supplychainvoucher
       rabbitmq_queue: supplychainVoucherQueue
@@ -73,9 +73,9 @@ instances:
       on_group: "{{ org_name }}_supplychainjava"
     voucher-view:
       version: 20210423
-      server_name: yyxt.shufafin.com
+      server_name: voucher.vt.com
       listen_port: 8080
-      public_addr: https://yyxt.shufafin.com
+      public_addr: http://voucher.vt.com
       on_group: "{{ org_name }}_nginx"
 
   supplychain_df:
@@ -104,7 +104,7 @@ instances:
       version: develop-b20211029
       listen_port: 5003
       jvm_args: -Xms1G -Xmx1G -Xmn400m
-      public_addr: https://qblt.shufafin.com
+      public_addr: http://df.vt.com
       mongodb_database: supplychaindf
       pg_database: supplychaindf
       rabbitmq_queue: supplychaindfQueue
@@ -118,9 +118,9 @@ instances:
       supervisor: true
     factoring-portal:
       version: 20210423_permissionconfig
-      server_name: qblt.shufafin.com
+      server_name: df.vt.com
       listen_port: 8080
-      public_addr: https://qblt.shufafin.com
+      public_addr: http://df.vt.com
       on_group: "{{ org_name }}_nginx"
 
   supplychain_jeecg:
@@ -149,7 +149,7 @@ instances:
       version: develop-b2021102901
       listen_port: 5004
       jvm_args: -Xms1G -Xmx1G -Xmn400m
-      public_addr: https://yyprotal.shufafin.com
+      public_addr: http://jeecg.vt.com
       mongodb_database: supplychainjeecg
       pg_database: supplychainjeecg
       redis_host: 10.10.101.34
@@ -166,9 +166,9 @@ instances:
       on_group: "{{ org_name }}_java"
     factoring-portal:
       version: v2.0.1-yongyou-supplychain-b20200608
-      server_name: yyprotal.shufafin.com
+      server_name: jeecg.vt.com
       listen_port: 8080
-      public_addr: https://yyprotal.shufafin.com
+      public_addr: http://jeecg.vt.com
       on_group: "{{ org_name }}_nginx"
 
 

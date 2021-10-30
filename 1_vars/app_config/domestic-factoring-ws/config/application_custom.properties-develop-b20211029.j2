@@ -1,0 +1,67 @@
+logging.config=${root.path}/config/logback-spring.xml
+logging.file=${root.path}/logs/factoring.log
+server.port={{ instance_vars.listen_port }}
+spring.application.name=domesticFactoring
+spring.application.version=2.0.0
+platform.component.client.platformRuntimeServer=http://{{ instances[instance_name]['platform-service-runtime-ws']['domain'] }}:{{ instances[instance_name]['platform-service-runtime-ws']['listen_port'] }}
+spring.data.mongodb.uri={{ mongodb_url }}/{{ instance_vars.mongodb_database }}
+spring.data.mongodb.database={{ instance_vars.mongodb_database }}
+spring.datasource.url={{ pg_url }}/{{ instance_vars.pg_database }}
+spring.datasource.username={{ pg_user }}
+spring.datasource.password={{ pg_pass }}
+hoperun.plugins.amqp.fanoutQueueName={{ instance_vars.rabbitmq_queue }}
+hoperun.plugins.amqp.fanoutExchangeName={{ instance_vars.rabbitmq_exchange }}
+hoperun.plugins.amqp.isStartEventReceiver=true
+hoperun.blockchain.configbean=true
+hoperun.blockchain.isEncrypt=true
+spring.rabbitmq.addresses={{ rabbitmq_address }}
+spring.rabbitmq.username={{ rabbitmq_user }}
+spring.rabbitmq.password={{ rabbitmq_pass }}
+runchain.application.enableVerifySign=false
+hoperun.platform.base.apiserver.host=http://{{ instances[instance_name]['platform-hfclient-sdk-ws']['domain'] }}:{{ instances[instance_name]['platform-hfclient-sdk-ws']['listen_port'] }}/assetTradingPlatform
+#runchain.application.keyListServiceUrl=http://{#{ instances[instance_name]['keylist-ws']['domain'] }#}:{#{ instances[instance_name]['keylist-ws']['listen_port'] }#}/api/keylist
+jsb.component.client.inUse=false
+
+hoperun.platform.base.callBackQueryInterval=3000
+server.tomcat.basedir={{ instance_dir }}/df_tmp
+
+#应用地址
+runchain.application.applicationUrl={{ instance_vars.public_addr }}
+#cfca配置
+runchain.cfca.sadk.cfcaUrl={{ thirdparty['shuronglianCfcaSadk'][env_type]['url'] }}
+
+runchain.cfca.sadk.inUse=false
+runchain.cfca.sadk.systemAutoSignUrl=http://{{inventory_hostname}}:{{instances[instance_name]['supplychain_jeecg']['listen_port']}}/jeecg-boot
+#runchain.cfca.sadk.systemAutoSignUrl=http://10.10.101.30:5004/jeecg-boot
+
+runchain.registration.priPath=${root.path}/config/051@000006@N91120118MA06AT5407@1.pri
+runchain.registration.pubPath=${root.path}/config/051@000006@N91120118MA06AT5407@1.cer
+
+#runchain.application.operatorOrgId=53561af0118169270e173a908d55697d2560431d188dbacd94b38dc4707fd3651591422376312
+
+#hoperun.platform.base.enabled=true
+
+######YONYOU###########
+#企业信息配置
+#company.info.code: http://10.21.102.162:28686/jeecg-boot/comInfoCer/getComInfoCo/
+#法人二要素鉴权
+#authentica.two: http://10.21.102.162:28686/jeecg-boot/auth/two
+
+runchain.voucher.zxyh.e.url=http://10.249.149.1:5004
+runchain.zxyh.inUse=false
+runchain.zxyh.bankRate=0
+runchain.zxyh.serviceAcc=8110701012701249140
+runchain.zxyh.serviceAccNo=商户联调0611标黄代表没用过94
+runchain.zxyh.url=http://10.249.149.1:5004
+runchain.zxyh.defaultLogin=18900000012
+runchain.zxyh.mark=ZXZL
+runchain.zxyh.sftpHost=10.249.149.1
+runchain.zxyh.sftpPort=22
+runchain.zxyh.sftpLogin=sftpuser
+runchain.zxyh.sftpPassword=sftpuser@123
+runchain.zxyh.uploadPath=/home/sftpuser/upload/
+runchain.zxyh.serviceAccNo=商户联调0611标黄代表没用过94
+
+autoQueryFactoringApplyResultScheduling.enabled: false
+autoQueryFactoringApplyResultScheduling.cronExpr: 0 0/30 * * * ?
+

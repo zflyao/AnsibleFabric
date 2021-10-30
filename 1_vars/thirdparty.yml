@@ -64,6 +64,9 @@ shuronglianCfca:
 shuronglianCfcaSadk:
   test:
     url: http://10.255.0.165:8080/Seal
+  alivt:    
+    url: http://{{cfca_t}}:8080/Seal
   prod:
-    url: http://10.21.102.179:8080/Seal
+#    url: http://10.21.102.179:8080/Seal
+    url: http://{{cfca_p}}:8080/Seal
 

@@ -639,6 +639,25 @@ zone-service-ws:
       proxy_set_header Connection "upgrade";
     proxy_pass: 'http://zone-service-ws'
 
+jeecg-boot-parent:
+  description: 运营后端服务
+  app_type: java
+  java_version: 1.8.0_91
+  jvm_args: -Xms1G -Xmx1G -Xmn400m
+  config_files:
+  - path: config/application_custom.properties
+    versioned: false
+  - path: config/rsa_pri_0.pem
+    from_var: rsa_pri_0
+  - path: config/rsa_pub_0.pem
+    from_var: rsa_pub_0
+  - path: deploy.sh
+    executable: true
+  healthz:
+    type: file
+    file: logs/yunying.log
+    search_regex: is running
+
 portal-service-ws:
   description:
   app_type: java
